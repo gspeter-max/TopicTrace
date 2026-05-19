@@ -6,9 +6,30 @@ This keeps data organized and prevents context pollution.
 """
 
 import os
+import re
 
 # Base directory for all sessions
 SESSIONS_DIR = "sessions"
+
+
+def _sanitize_session_name(session_name: str) -> str:
+    """
+    Sanitize session name to prevent path traversal attacks.
+
+    Removes any character that isn't alphanumeric, dash, or underscore.
+    This prevents inputs like "../../etc" from escaping the sessions directory.
+
+    Args:
+        session_name: Raw session name from user input
+
+    Returns:
+        Safe session name with only allowed characters
+    """
+    # Remove path separators and dangerous characters
+    safe_name = re.sub(r'[^a-zA-Z0-9_-]', '', session_name)
+    # Collapse multiple dashes/underscores
+    safe_name = re.sub(r'[-_]+', '-', safe_name).strip('-')
+    return safe_name
 
 
 def get_session_path(session_name: str) -> str:
@@ -20,8 +41,17 @@ def get_session_path(session_name: str) -> str:
 
     Returns:
         Full path to the session directory (e.g., "sessions/A-Level-Biology-2024")
+
+    Raises:
+        ValueError: If session name is empty after sanitization
     """
-    return os.path.join(SESSIONS_DIR, session_name)
+    safe_name = _sanitize_session_name(session_name)
+    if not safe_name:
+        raise ValueError(
+            f"Session name '{session_name}' is empty or contains only invalid characters. "
+            "Use letters, numbers, dashes, or underscores."
+        )
+    return os.path.join(SESSIONS_DIR, safe_name)
 
 
 def create_session(session_name: str) -> str:

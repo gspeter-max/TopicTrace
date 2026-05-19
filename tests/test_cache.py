@@ -87,3 +87,39 @@ def test_load_from_cache_returns_none_for_missing_key():
 
     # Cleanup
     shutil.rmtree(session_path)
+
+
+def test_load_from_cache_returns_none_for_corrupted_file():
+    """Test that load_from_cache returns None when cache file is corrupted."""
+    session_name = "test-cache-corrupted"
+    session_path = create_session(session_name)
+    cache_key = "test-key"
+
+    # Write corrupted JSON
+    cache_file = os.path.join(session_path, "cache", f"{cache_key}.json")
+    with open(cache_file, "w") as f:
+        f.write("not valid json {{{")
+
+    loaded = load_from_cache(session_path, cache_key)
+
+    assert loaded is None
+
+    # Cleanup
+    shutil.rmtree(session_path)
+
+
+def test_is_cache_valid_returns_false_for_corrupted_file():
+    """Test that is_cache_valid returns False when cache file is corrupted."""
+    session_name = "test-cache-corrupted-valid"
+    session_path = create_session(session_name)
+    cache_key = "test-key"
+
+    # Write corrupted JSON
+    cache_file = os.path.join(session_path, "cache", f"{cache_key}.json")
+    with open(cache_file, "w") as f:
+        f.write("not valid json {{{")
+
+    assert is_cache_valid(session_path, cache_key) is False
+
+    # Cleanup
+    shutil.rmtree(session_path)

@@ -57,14 +57,18 @@ def load_from_cache(session_path: str, cache_key: str) -> dict | None:
         cache_key: Unique key for this cache entry
 
     Returns:
-        The cached data, or None if cache file doesn't exist
+        The cached data, or None if cache file doesn't exist or is corrupted
     """
     cache_file = _get_cache_file_path(session_path, cache_key)
     if not os.path.exists(cache_file):
         return None
-    with open(cache_file, "r") as f:
-        cache_content = json.load(f)
-    return cache_content["data"]
+    try:
+        with open(cache_file, "r") as f:
+            cache_content = json.load(f)
+        return cache_content["data"]
+    except (json.JSONDecodeError, KeyError):
+        # Cache file is corrupted — treat as missing
+        return None
 
 
 def is_cache_valid(session_path: str, cache_key: str) -> bool:
@@ -81,7 +85,11 @@ def is_cache_valid(session_path: str, cache_key: str) -> bool:
     cache_file = _get_cache_file_path(session_path, cache_key)
     if not os.path.exists(cache_file):
         return False
-    with open(cache_file, "r") as f:
-        cache_content = json.load(f)
-    cache_age = time.time() - cache_content["timestamp"]
-    return cache_age < CACHE_TTL_SECONDS
+    try:
+        with open(cache_file, "r") as f:
+            cache_content = json.load(f)
+        cache_age = time.time() - cache_content["timestamp"]
+        return cache_age < CACHE_TTL_SECONDS
+    except (json.JSONDecodeError, KeyError):
+        # Cache file is corrupted — treat as invalid
+        return False
