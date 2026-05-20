@@ -23,8 +23,9 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-from topictrace.session import create_session, get_session_path, _sanitize_session_name, SESSIONS_DIR
-from topictrace.cache import save_to_cache, load_from_cache, is_cache_valid, CACHE_TTL_SECONDS, _get_cache_file_path
+from topictrace.session import create_session, get_session_path, _sanitize_session_name
+from topictrace.cache import save_to_cache, load_from_cache, is_cache_valid, _get_cache_file_path
+from topictrace import settings
 
 
 # ============================================================
@@ -134,13 +135,13 @@ class TestSessionCreation:
         """Path should start with sessions/ directory."""
         name = "test-path-format"
         path = create_session(name)
-        assert path.startswith(SESSIONS_DIR)
+        assert path.startswith(settings.SESSIONS_DIR)
         shutil.rmtree(path)
 
     def test_get_session_path_format(self):
         """Path should be sessions/<name> format."""
         path = get_session_path("my-session")
-        assert path == os.path.join(SESSIONS_DIR, "my-session")
+        assert path == os.path.join(settings.SESSIONS_DIR, "my-session")
 
     def test_create_session_with_numbers(self):
         """Session names with numbers should work."""
@@ -260,7 +261,7 @@ class TestCacheEdgeCases:
 
         # Save with old timestamp
         cache_file = _get_cache_file_path(path, "test")
-        old_time = time.time() - (CACHE_TTL_SECONDS + 1)
+        old_time = time.time() - (settings.CACHE_TTL_SECONDS + 1)
         with open(cache_file, "w") as f:
             json.dump({"data": "old", "timestamp": old_time}, f)
 
@@ -273,7 +274,7 @@ class TestCacheEdgeCases:
         path = create_session(name)
 
         cache_file = _get_cache_file_path(path, "test")
-        boundary_time = time.time() - (CACHE_TTL_SECONDS - 1)
+        boundary_time = time.time() - (settings.CACHE_TTL_SECONDS - 1)
         with open(cache_file, "w") as f:
             json.dump({"data": "boundary", "timestamp": boundary_time}, f)
 
@@ -286,7 +287,7 @@ class TestCacheEdgeCases:
         path = create_session(name)
 
         cache_file = _get_cache_file_path(path, "test")
-        exact_time = time.time() - (CACHE_TTL_SECONDS + 1)
+        exact_time = time.time() - (settings.CACHE_TTL_SECONDS + 1)
         with open(cache_file, "w") as f:
             json.dump({"data": "exact", "timestamp": exact_time}, f)
 
@@ -381,7 +382,7 @@ class TestCacheEdgeCases:
 class TestWebSearchEdgeCases:
     """Test web_search edge cases and failure modes."""
 
-    @patch.dict(os.environ, {"TAVILY_API_KEY": "test-key"})
+    @patch("topictrace.settings.TAVILY_API_KEY", "test-key")
     @patch("topictrace.tools.web_search.TavilyClient")
     def test_empty_results(self, MockClient):
         """Handle empty search results gracefully."""
@@ -393,7 +394,7 @@ class TestWebSearchEdgeCases:
         assert results == []
         shutil.rmtree(path)
 
-    @patch.dict(os.environ, {"TAVILY_API_KEY": "test-key"})
+    @patch("topictrace.settings.TAVILY_API_KEY", "test-key")
     @patch("topictrace.tools.web_search.TavilyClient")
     def test_missing_results_key(self, MockClient):
         """Handle missing 'results' key in API response."""
@@ -405,7 +406,7 @@ class TestWebSearchEdgeCases:
         assert results == []
         shutil.rmtree(path)
 
-    @patch.dict(os.environ, {"TAVILY_API_KEY": "test-key"})
+    @patch("topictrace.settings.TAVILY_API_KEY", "test-key")
     @patch("topictrace.tools.web_search.TavilyClient")
     def test_result_missing_fields(self, MockClient):
         """Handle results with missing title/url/content fields."""
@@ -421,7 +422,7 @@ class TestWebSearchEdgeCases:
         assert results[0]["snippet"] == ""
         shutil.rmtree(path)
 
-    @patch.dict(os.environ, {"TAVILY_API_KEY": "test-key"})
+    @patch("topictrace.settings.TAVILY_API_KEY", "test-key")
     @patch("topictrace.tools.web_search.TavilyClient")
     def test_snippet_truncation(self, MockClient):
         """Snippets should be truncated to 300 characters."""
@@ -436,7 +437,7 @@ class TestWebSearchEdgeCases:
         assert len(results[0]["snippet"]) <= 300
         shutil.rmtree(path)
 
-    @patch.dict(os.environ, {"TAVILY_API_KEY": "test-key"})
+    @patch("topictrace.settings.TAVILY_API_KEY", "test-key")
     @patch("topictrace.tools.web_search.TavilyClient")
     def test_api_timeout_raises(self, MockClient):
         """API timeout should propagate as exception."""
@@ -448,7 +449,7 @@ class TestWebSearchEdgeCases:
             web_search("test", path)
         shutil.rmtree(path)
 
-    @patch.dict(os.environ, {"TAVILY_API_KEY": "test-key"})
+    @patch("topictrace.settings.TAVILY_API_KEY", "test-key")
     @patch("topictrace.tools.web_search.TavilyClient")
     def test_api_rate_limit_raises(self, MockClient):
         """API rate limit should propagate as exception."""
@@ -460,7 +461,7 @@ class TestWebSearchEdgeCases:
             web_search("test", path)
         shutil.rmtree(path)
 
-    @patch.dict(os.environ, {"TAVILY_API_KEY": "test-key"})
+    @patch("topictrace.settings.TAVILY_API_KEY", "test-key")
     @patch("topictrace.tools.web_search.TavilyClient")
     def test_search_saves_to_file(self, MockClient):
         """Search results should be saved to search_results.md."""
@@ -480,7 +481,7 @@ class TestWebSearchEdgeCases:
         assert "https://test.com" in content
         shutil.rmtree(path)
 
-    @patch.dict(os.environ, {"TAVILY_API_KEY": "test-key"})
+    @patch("topictrace.settings.TAVILY_API_KEY", "test-key")
     @patch("topictrace.tools.web_search.TavilyClient")
     def test_search_caches_results(self, MockClient):
         """Search results should be cached."""
@@ -690,21 +691,17 @@ class TestSummarizeEdgeCases:
             summarize("   ", "query", path)
         shutil.rmtree(path)
 
+    @patch("topictrace.settings.NVIDIA_API_KEY", None)
     def test_missing_api_key_raises(self):
         """Missing NVIDIA_API_KEY should raise ValueError."""
         name = "test-summarize-no-key"
         path = create_session(name)
-        old_key = os.environ.pop("NVIDIA_API_KEY", None)
-        try:
-            from topictrace.tools.summarize import summarize
-            with pytest.raises(ValueError, match="NVIDIA_API_KEY not found"):
-                summarize("content", "query", path)
-        finally:
-            if old_key:
-                os.environ["NVIDIA_API_KEY"] = old_key
+        from topictrace.tools.summarize import summarize
+        with pytest.raises(ValueError, match="NVIDIA_API_KEY not found"):
+            summarize("content", "query", path)
         shutil.rmtree(path)
 
-    @patch.dict(os.environ, {"NVIDIA_API_KEY": "test-key"})
+    @patch("topictrace.settings.NVIDIA_API_KEY", "test-key")
     @patch("topictrace.tools.summarize.OpenAI")
     def test_streaming_chunks_collected(self, MockOpenAI):
         """Streaming chunks should be collected into full summary."""
@@ -726,7 +723,7 @@ class TestSummarizeEdgeCases:
         assert result == "Part 1. Part 2."
         shutil.rmtree(path)
 
-    @patch.dict(os.environ, {"NVIDIA_API_KEY": "test-key"})
+    @patch("topictrace.settings.NVIDIA_API_KEY", "test-key")
     @patch("topictrace.tools.summarize.OpenAI")
     def test_streaming_empty_choices_skipped(self, MockOpenAI):
         """Empty choices in streaming should be skipped."""
@@ -747,7 +744,7 @@ class TestSummarizeEdgeCases:
         assert result == "Summary."
         shutil.rmtree(path)
 
-    @patch.dict(os.environ, {"NVIDIA_API_KEY": "test-key"})
+    @patch("topictrace.settings.NVIDIA_API_KEY", "test-key")
     @patch("topictrace.tools.summarize.OpenAI")
     def test_streaming_none_content_skipped(self, MockOpenAI):
         """None content in delta should be skipped."""
@@ -769,7 +766,7 @@ class TestSummarizeEdgeCases:
         assert result == "Done."
         shutil.rmtree(path)
 
-    @patch.dict(os.environ, {"NVIDIA_API_KEY": "test-key"})
+    @patch("topictrace.settings.NVIDIA_API_KEY", "test-key")
     @patch("topictrace.tools.summarize.OpenAI")
     def test_content_truncated_to_8000_chars(self, MockOpenAI):
         """Content should be truncated to 8000 characters."""
@@ -795,7 +792,7 @@ class TestSummarizeEdgeCases:
         assert len(content_in_prompt) <= 8000
         shutil.rmtree(path)
 
-    @patch.dict(os.environ, {"NVIDIA_API_KEY": "test-key"})
+    @patch("topictrace.settings.NVIDIA_API_KEY", "test-key")
     @patch("topictrace.tools.summarize.OpenAI")
     def test_saves_summary_to_file(self, MockOpenAI):
         """Summary should be saved to summaries/ directory."""
@@ -817,7 +814,7 @@ class TestSummarizeEdgeCases:
             assert f.read() == "Saved summary."
         shutil.rmtree(path)
 
-    @patch.dict(os.environ, {"NVIDIA_API_KEY": "test-key"})
+    @patch("topictrace.settings.NVIDIA_API_KEY", "test-key")
     @patch("topictrace.tools.summarize.OpenAI")
     def test_api_error_propagates(self, MockOpenAI):
         """API errors should propagate as exceptions."""
@@ -922,7 +919,8 @@ class TestRegistryEdgeCases:
 class TestIntegrationDeepAudit:
     """Test full chain with all failure paths."""
 
-    @patch.dict(os.environ, {"TAVILY_API_KEY": "test-key", "NVIDIA_API_KEY": "test-key"})
+    @patch("topictrace.settings.TAVILY_API_KEY", "test-key")
+    @patch("topictrace.settings.NVIDIA_API_KEY", "test-key")
     @patch("topictrace.tools.web_search.TavilyClient")
     @patch("topictrace.tools.web_fetch.requests.get")
     @patch("topictrace.tools.summarize.OpenAI")
@@ -969,7 +967,8 @@ class TestIntegrationDeepAudit:
 
         shutil.rmtree(path)
 
-    @patch.dict(os.environ, {"TAVILY_API_KEY": "test-key", "NVIDIA_API_KEY": "test-key"})
+    @patch("topictrace.settings.TAVILY_API_KEY", "test-key")
+    @patch("topictrace.settings.NVIDIA_API_KEY", "test-key")
     @patch("topictrace.tools.web_search.TavilyClient")
     def test_search_failure_does_not_corrupt_session(self, MockTavily):
         """Search failure should not leave corrupted files in session."""
@@ -986,7 +985,8 @@ class TestIntegrationDeepAudit:
         assert os.path.isdir(os.path.join(path, "cache"))
         shutil.rmtree(path)
 
-    @patch.dict(os.environ, {"TAVILY_API_KEY": "test-key", "NVIDIA_API_KEY": "test-key"})
+    @patch("topictrace.settings.TAVILY_API_KEY", "test-key")
+    @patch("topictrace.settings.NVIDIA_API_KEY", "test-key")
     @patch("topictrace.tools.web_fetch.requests.get")
     def test_fetch_failure_does_not_corrupt_session(self, mock_get):
         """Fetch failure should not leave corrupted files in session."""
@@ -1001,7 +1001,8 @@ class TestIntegrationDeepAudit:
         assert os.path.isdir(path)
         shutil.rmtree(path)
 
-    @patch.dict(os.environ, {"TAVILY_API_KEY": "test-key", "NVIDIA_API_KEY": "test-key"})
+    @patch("topictrace.settings.TAVILY_API_KEY", "test-key")
+    @patch("topictrace.settings.NVIDIA_API_KEY", "test-key")
     @patch("topictrace.tools.summarize.OpenAI")
     def test_summarize_failure_does_not_corrupt_session(self, MockOpenAI):
         """Summarize failure should not leave corrupted files in session."""
@@ -1018,7 +1019,8 @@ class TestIntegrationDeepAudit:
         assert os.path.isdir(path)
         shutil.rmtree(path)
 
-    @patch.dict(os.environ, {"TAVILY_API_KEY": "test-key", "NVIDIA_API_KEY": "test-key"})
+    @patch("topictrace.settings.TAVILY_API_KEY", "test-key")
+    @patch("topictrace.settings.NVIDIA_API_KEY", "test-key")
     @patch("topictrace.tools.web_search.TavilyClient")
     @patch("topictrace.tools.web_fetch.requests.get")
     @patch("topictrace.tools.summarize.OpenAI")

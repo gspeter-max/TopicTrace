@@ -8,8 +8,7 @@ This keeps data organized and prevents context pollution.
 import os
 import re
 
-# Base directory for all sessions
-SESSIONS_DIR = "sessions"
+from topictrace import settings
 
 
 def _sanitize_session_name(session_name: str) -> str:
@@ -51,7 +50,7 @@ def get_session_path(session_name: str) -> str:
             f"Session name '{session_name}' is empty or contains only invalid characters. "
             "Use letters, numbers, dashes, or underscores."
         )
-    return os.path.join(SESSIONS_DIR, safe_name)
+    return os.path.join(settings.SESSIONS_DIR, safe_name)
 
 
 def create_session(session_name: str) -> str:

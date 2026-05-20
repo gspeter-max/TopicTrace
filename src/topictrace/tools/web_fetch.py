@@ -1,19 +1,9 @@
-"""
-Web fetch tool for TopicTrace using Jina Reader.
-
-Jina Reader converts any URL to clean Markdown.
-Just prepend "https://r.jina.ai/" to any URL.
-
-No fallback — Jina Reader is the only fetch provider.
-"""
 
 import os
 import re
 import requests
+from topictrace import settings
 from topictrace.cache import save_to_cache, load_from_cache, is_cache_valid
-
-# Jina Reader base URL — prepend to any URL to get Markdown
-JINA_READER_BASE_URL = "https://r.jina.ai/"
 
 
 def _create_cache_key(url: str) -> str:
@@ -23,11 +13,6 @@ def _create_cache_key(url: str) -> str:
     Replaces special characters with dashes.
     Example: "https://example.com/page" → "fetch_https---example-com-page"
 
-    Args:
-        url: The URL to fetch
-
-    Returns:
-        A safe filename string for caching
     """
     safe_url = re.sub(r'[^a-zA-Z0-9]', '-', url)[:80]
     return f"fetch_{safe_url}"
@@ -39,10 +24,6 @@ def _save_content_to_file(content: str, url: str, session_path: str) -> None:
 
     Creates a numbered file like page_1.md, page_2.md, etc.
 
-    Args:
-        content: The Markdown content to save
-        url: The source URL (saved as a comment in the file)
-        session_path: Path to the session directory
     """
     fetched_dir = os.path.join(session_path, "fetched_pages")
 
@@ -69,16 +50,6 @@ def web_fetch(url: str, session_path: str) -> str:
         4. Save content to session/fetched_pages/page_N.md
         5. Cache content for future use
 
-    Args:
-        url: The URL to fetch (e.g., "https://example.com/page")
-        session_path: Path to the session directory for saving content
-
-    Returns:
-        Clean Markdown content as a string
-
-    Raises:
-        ValueError: If url is empty
-        Exception: If Jina Reader returns a non-200 status code
     """
     # Validate input
     if not url or not url.strip():
@@ -92,8 +63,8 @@ def web_fetch(url: str, session_path: str) -> str:
             return cached
 
     # Step 2: Call Jina Reader API
-    jina_url = f"{JINA_READER_BASE_URL}{url}"
-    response = requests.get(jina_url, timeout=30)
+    jina_url = f"{settings.JINA_READER_BASE_URL}{url}"
+    response = requests.get(jina_url, timeout=settings.FETCH_TIMEOUT_SECONDS)
 
     # Step 3: Check for errors
     if response.status_code != 200:

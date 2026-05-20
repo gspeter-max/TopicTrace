@@ -9,8 +9,7 @@ import json
 import os
 import time
 
-# Cache is valid for 20 minutes (1200 seconds)
-CACHE_TTL_SECONDS = 20 * 60
+from topictrace import settings
 
 
 def _get_cache_file_path(session_path: str, cache_key: str) -> str:
@@ -89,7 +88,7 @@ def is_cache_valid(session_path: str, cache_key: str) -> bool:
         with open(cache_file, "r") as f:
             cache_content = json.load(f)
         cache_age = time.time() - cache_content["timestamp"]
-        return cache_age < CACHE_TTL_SECONDS
+        return cache_age < settings.CACHE_TTL_SECONDS
     except (json.JSONDecodeError, KeyError):
         # Cache file is corrupted — treat as invalid
         return False

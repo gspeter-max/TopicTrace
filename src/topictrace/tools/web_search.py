@@ -7,8 +7,8 @@ structured results perfect for research agents.
 No fallback — Tavily is the only search provider.
 """
 
-import os
 from tavily import TavilyClient
+from topictrace import settings
 from topictrace.cache import save_to_cache, load_from_cache, is_cache_valid
 
 
@@ -19,11 +19,6 @@ def _create_cache_key(query: str) -> str:
     Converts query to lowercase and replaces spaces with dashes.
     Example: "A-Level Biology" → "search_a-level-biology"
 
-    Args:
-        query: The search query string
-
-    Returns:
-        A safe filename string for caching
     """
     safe_query = query.lower().replace(" ", "-")[:50]
     return f"search_{safe_query}"
@@ -43,6 +38,7 @@ def _save_results_to_file(results: list, session_path: str) -> None:
         results: List of result dicts with title, url, snippet
         session_path: Path to the session directory
     """
+    import os
     results_file = os.path.join(session_path, "search_results.md")
 
     with open(results_file, "w") as f:
@@ -84,17 +80,16 @@ def web_search(query: str, session_path: str) -> list[dict]:
         if cached is not None:
             return cached
 
-    # Step 2: Get API key from environment — fail fast if missing
-    api_key = os.getenv("TAVILY_API_KEY")
-    if not api_key:
+    # Step 2: Get API key from settings — fail fast if missing
+    if not settings.TAVILY_API_KEY:
         raise ValueError(
             "TAVILY_API_KEY not found. "
             "Set it in your .env file: TAVILY_API_KEY=your-key-here"
         )
 
     # Step 3: Call Tavily API
-    client = TavilyClient(api_key=api_key)
-    response = client.search(query=query, max_results=10)
+    client = TavilyClient(api_key=settings.TAVILY_API_KEY)
+    response = client.search(query=query, max_results=settings.SEARCH_MAX_RESULTS)
 
     # Step 4: Extract clean results
     results = []
@@ -102,7 +97,7 @@ def web_search(query: str, session_path: str) -> list[dict]:
         results.append({
             "title": item.get("title", "No Title"),
             "url": item.get("url", ""),
-            "snippet": item.get("content", "")[:300]  # Limit snippet length
+            "snippet": item.get("content", "")[:settings.SEARCH_SNIPPET_MAX_CHARS]
         })
 
     # Step 5: Save to file and cache

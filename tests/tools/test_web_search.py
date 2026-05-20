@@ -5,7 +5,7 @@ from topictrace.session import create_session
 from topictrace.tools.web_search import web_search
 
 
-@patch.dict(os.environ, {"TAVILY_API_KEY": "test-api-key"})
+@patch("topictrace.settings.TAVILY_API_KEY", "test-api-key")
 @patch("topictrace.tools.web_search.TavilyClient")
 def test_web_search_returns_list_of_results(MockTavilyClient):
     """Test that web_search returns a list of search results."""
@@ -36,7 +36,7 @@ def test_web_search_returns_list_of_results(MockTavilyClient):
     shutil.rmtree(session_path)
 
 
-@patch.dict(os.environ, {"TAVILY_API_KEY": "test-api-key"})
+@patch("topictrace.settings.TAVILY_API_KEY", "test-api-key")
 @patch("topictrace.tools.web_search.TavilyClient")
 def test_web_search_handles_empty_results(MockTavilyClient):
     """Test that web_search handles empty search results gracefully."""
@@ -56,7 +56,7 @@ def test_web_search_handles_empty_results(MockTavilyClient):
     shutil.rmtree(session_path)
 
 
-@patch.dict(os.environ, {"TAVILY_API_KEY": "test-api-key"})
+@patch("topictrace.settings.TAVILY_API_KEY", "test-api-key")
 @patch("topictrace.tools.web_search.TavilyClient")
 def test_web_search_saves_results_to_file(MockTavilyClient):
     """Test that web_search saves results to search_results.md in session folder."""
@@ -90,7 +90,7 @@ def test_web_search_saves_results_to_file(MockTavilyClient):
     shutil.rmtree(session_path)
 
 
-@patch.dict(os.environ, {"TAVILY_API_KEY": "test-api-key"})
+@patch("topictrace.settings.TAVILY_API_KEY", "test-api-key")
 def test_web_search_uses_cache_when_valid():
     """Test that web_search returns cached results when cache is fresh."""
     session_name = "test-web-search-cache"
@@ -110,21 +110,15 @@ def test_web_search_uses_cache_when_valid():
     shutil.rmtree(session_path)
 
 
+@patch("topictrace.settings.TAVILY_API_KEY", None)
 def test_web_search_raises_without_api_key():
     """Test that web_search raises ValueError when TAVILY_API_KEY is not set."""
     session_name = "test-web-search-no-key"
     session_path = create_session(session_name)
 
-    # Temporarily remove the API key
-    old_key = os.environ.pop("TAVILY_API_KEY", None)
-    try:
-        import pytest
-        with pytest.raises(ValueError, match="TAVILY_API_KEY not found"):
-            web_search("test query", session_path)
-    finally:
-        # Restore the key
-        if old_key:
-            os.environ["TAVILY_API_KEY"] = old_key
+    import pytest
+    with pytest.raises(ValueError, match="TAVILY_API_KEY not found"):
+        web_search("test query", session_path)
 
     # Cleanup
     shutil.rmtree(session_path)

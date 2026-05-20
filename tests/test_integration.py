@@ -6,7 +6,8 @@ from topictrace.cache import save_to_cache, load_from_cache, is_cache_valid
 from topictrace.tools.registry import run_tool
 
 
-@patch.dict(os.environ, {"TAVILY_API_KEY": "test-key", "NVIDIA_API_KEY": "test-key"})
+@patch("topictrace.settings.TAVILY_API_KEY", "test-key")
+@patch("topictrace.settings.NVIDIA_API_KEY", "test-key")
 @patch("topictrace.tools.web_search.TavilyClient")
 @patch("topictrace.tools.web_fetch.requests.get")
 @patch("topictrace.tools.summarize.OpenAI")

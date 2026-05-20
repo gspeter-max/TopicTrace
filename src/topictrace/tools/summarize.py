@@ -7,13 +7,7 @@ GLM-5.1 is a powerful model for summarization tasks.
 
 import os
 from openai import OpenAI
-from dotenv import load_dotenv
-
-load_dotenv()
-
-# NVIDIA NIM API configuration
-NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
-NVIDIA_MODEL = "z-ai/glm-5.1"
+from topictrace import settings
 
 
 def _save_summary_to_file(summary: str, session_path: str) -> None:
@@ -28,7 +22,6 @@ def _save_summary_to_file(summary: str, session_path: str) -> None:
     """
     summaries_dir = os.path.join(session_path, "summaries")
 
-    # Count existing files to determine the next number
     existing_files = [f for f in os.listdir(summaries_dir) if f.endswith(".md")]
     next_number = len(existing_files) + 1
 
@@ -56,28 +49,23 @@ def summarize(content: str, query: str, session_path: str) -> str:
         A concise summary string
 
     Raises:
-        ValueError: If content is empty
+        ValueError: If content is empty or API key is missing
         Exception: If NVIDIA NIM API call fails
     """
-    # Validate input
     if not content or not content.strip():
         raise ValueError("Content cannot be empty for summarization")
 
-    # Get API key from environment — fail fast if missing
-    api_key = os.getenv("NVIDIA_API_KEY")
-    if not api_key:
+    if not settings.NVIDIA_API_KEY:
         raise ValueError(
             "NVIDIA_API_KEY not found. "
             "Set it in your .env file: NVIDIA_API_KEY=your-key-here"
         )
 
-    # Create OpenAI client pointing to NVIDIA NIM endpoint
     client = OpenAI(
-        base_url=NVIDIA_BASE_URL,
-        api_key=api_key
+        base_url=settings.NVIDIA_BASE_URL,
+        api_key=settings.NVIDIA_API_KEY
     )
 
-    # Build the prompt for GLM-5.1
     messages = [
         {
             "role": "system",
@@ -92,17 +80,17 @@ def summarize(content: str, query: str, session_path: str) -> str:
             "role": "user",
             "content": (
                 f"Query: {query}\n\n"
-                f"Content to summarize:\n{content[:8000]}"  # Limit to avoid token overflow
+                f"Content to summarize:\n{content[:settings.SUMMARIZE_MAX_INPUT_CHARS]}"
             )
         }
     ]
 
     # Call GLM-5.1 via NVIDIA NIM with streaming
     completion = client.chat.completions.create(
-        model=NVIDIA_MODEL,
+        model=settings.NVIDIA_MODEL,
         messages=messages,
-        temperature=0.7,
-        max_tokens=1024,
+        temperature=settings.SUMMARIZE_TEMPERATURE,
+        max_tokens=settings.SUMMARIZE_MAX_TOKENS,
         stream=True
     )
 

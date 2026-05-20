@@ -1,14 +1,3 @@
-"""
-Tool registry for TopicTrace.
-
-Provides:
-1. get_tool_definitions() — returns OpenAI-compatible tool definitions for LLM
-2. run_tool() — dispatches tool calls to the correct function
-
-The LLM uses get_tool_definitions() to know what tools are available.
-When the LLM decides to use a tool, run_tool() executes it.
-"""
-
 from topictrace.tools.web_search import web_search
 from topictrace.tools.web_fetch import web_fetch
 from topictrace.tools.summarize import summarize
@@ -21,9 +10,6 @@ def get_tool_definitions() -> list:
     Returns a list of tool definitions in OpenAI-compatible format.
     These tell the LLM what tools are available and what parameters
     each tool expects.
-
-    Returns:
-        List of tool definition dicts in OpenAI function calling format
     """
     return [
         {
@@ -102,28 +88,16 @@ def run_tool(tool_name: str, session_path: str, **kwargs):
 
     This is the central dispatcher that maps tool names to their functions.
     The agent calls this when the LLM decides to use a tool.
-
-    Args:
-        tool_name: Name of the tool to run ("web_search", "web_fetch", or "summarize")
-        session_path: Path to the current session directory
-        **kwargs: Arguments to pass to the tool function
-
-    Returns:
-        The result from the tool function, or an error string if tool is unknown
     """
-    # Map tool names to their actual functions
     tools = {
         "web_search": web_search,
         "web_fetch": web_fetch,
         "summarize": summarize,
     }
 
-    # Look up the tool function
     tool_function = tools.get(tool_name)
 
     if tool_function is None:
-        # Return error message for unknown tools
         return f"Error: Unknown tool '{tool_name}'. Available tools: {', '.join(tools.keys())}"
 
-    # Call the tool with session_path and the provided arguments
     return tool_function(session_path=session_path, **kwargs)
