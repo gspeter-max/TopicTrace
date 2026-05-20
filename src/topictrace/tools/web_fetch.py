@@ -1,29 +1,26 @@
+"""
+Web fetch tool for TopicTrace using Jina Reader.
+
+Jina Reader converts any URL to clean Markdown.
+Just prepend "https://r.jina.ai/" to any URL.
+
+No fallback — Jina Reader is the only fetch provider.
+"""
 
 import os
-import re
 import requests
 from topictrace import settings
-from topictrace.cache import save_to_cache, load_from_cache, is_cache_valid
-
-
-def _create_cache_key(url: str) -> str:
-    """
-    Create a safe cache key from a URL.
-
-    Replaces special characters with dashes.
-    Example: "https://example.com/page" → "fetch_https---example-com-page"
-
-    """
-    safe_url = re.sub(r'[^a-zA-Z0-9]', '-', url)[:80]
-    return f"fetch_{safe_url}"
+from topictrace.cache import save_to_cache, load_from_cache, is_cache_valid, create_cache_key
 
 
 def _save_content_to_file(content: str, url: str, session_path: str) -> None:
     """
     Save fetched Markdown content to the fetched_pages directory.
 
-    Creates a numbered file like page_1.md, page_2.md, etc.
-
+    Args:
+        content: The Markdown content to save
+        url: The source URL (saved as a comment in the file)
+        session_path: Path to the session directory
     """
     fetched_dir = os.path.join(session_path, "fetched_pages")
 
@@ -43,20 +40,23 @@ def web_fetch(url: str, session_path: str) -> str:
     """
     Fetch a web page and convert it to clean Markdown.
 
-    Flow:
-        1. Check cache → return cached content if fresh (less than 20 min)
-        2. Call Jina Reader API (r.jina.ai/URL)
-        3. Check response status — raise on error
-        4. Save content to session/fetched_pages/page_N.md
-        5. Cache content for future use
+    Args:
+        url: The URL to fetch
+        session_path: Path to the session directory
 
+    Returns:
+        Clean Markdown content as a string
+
+    Raises:
+        ValueError: If url is empty
+        Exception: If Jina Reader returns a non-200 status code
     """
     # Validate input
     if not url or not url.strip():
         raise ValueError("URL cannot be empty")
 
     # Step 1: Check cache
-    cache_key = _create_cache_key(url)
+    cache_key = create_cache_key("fetch", url)
     if is_cache_valid(session_path, cache_key):
         cached = load_from_cache(session_path, cache_key)
         if cached is not None:

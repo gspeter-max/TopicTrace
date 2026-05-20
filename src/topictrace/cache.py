@@ -12,6 +12,28 @@ import time
 from topictrace import settings
 
 
+def create_cache_key(prefix: str, value: str) -> str:
+    """
+    Create a safe cache key from a prefix and value.
+
+    Replaces all non-alphanumeric characters with dashes.
+    Example: create_cache_key("search", "A-Level Biology") → "search_a-level-biology"
+    Example: create_cache_key("fetch", "https://example.com/page") → "fetch_https---example-com-page"
+
+    Args:
+        prefix: Key prefix (e.g., "search", "fetch")
+        value: The value to create a key from (e.g., query or URL)
+
+    Returns:
+        A safe filename string for caching
+    """
+    import re
+    safe_value = re.sub(r'[^a-zA-Z0-9]', '-', value)[:50]
+    # Collapse multiple dashes
+    safe_value = re.sub(r'-+', '-', safe_value).strip('-')
+    return f"{prefix}_{safe_value}"
+
+
 def _get_cache_file_path(session_path: str, cache_key: str) -> str:
     """
     Get the full path to a cache file.

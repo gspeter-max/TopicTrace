@@ -10,8 +10,8 @@ from topictrace.tools.registry import run_tool
 @patch("topictrace.settings.NVIDIA_API_KEY", "test-key")
 @patch("topictrace.tools.web_search.TavilyClient")
 @patch("topictrace.tools.web_fetch.requests.get")
-@patch("topictrace.tools.summarize.OpenAI")
-def test_full_research_chain(MockOpenAI, mock_get, MockTavilyClient):
+@patch("topictrace.tools.summarize.call_llm")
+def test_full_research_chain(mock_call_llm, mock_get, MockTavilyClient):
     """Test the full research chain: search -> fetch -> summarize with caching."""
     session_name = "test-integration"
     session_path = create_session(session_name)
@@ -35,14 +35,8 @@ def test_full_research_chain(MockOpenAI, mock_get, MockTavilyClient):
     mock_response.status_code = 200
     mock_get.return_value = mock_response
 
-    # Mock summarize (streaming response)
-    mock_client = MagicMock()
-    MockOpenAI.return_value = mock_client
-    mock_chunk = MagicMock()
-    mock_chunk.choices = [MagicMock()]
-    mock_chunk.choices[0].delta.content = "Python is a versatile programming language."
-    mock_chunk.choices[0].delta.reasoning_content = None
-    mock_client.chat.completions.create.return_value = [mock_chunk]
+    # Mock summarize
+    mock_call_llm.return_value = "Python is a versatile programming language."
 
     # Step 1: Search
     search_results = run_tool("web_search", session_path=session_path, query="python basics")

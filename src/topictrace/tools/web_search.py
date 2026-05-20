@@ -9,30 +9,12 @@ No fallback — Tavily is the only search provider.
 
 from tavily import TavilyClient
 from topictrace import settings
-from topictrace.cache import save_to_cache, load_from_cache, is_cache_valid
-
-
-def _create_cache_key(query: str) -> str:
-    """
-    Create a safe cache key from a search query.
-
-    Converts query to lowercase and replaces spaces with dashes.
-    Example: "A-Level Biology" → "search_a-level-biology"
-
-    """
-    safe_query = query.lower().replace(" ", "-")[:50]
-    return f"search_{safe_query}"
+from topictrace.cache import save_to_cache, load_from_cache, is_cache_valid, create_cache_key
 
 
 def _save_results_to_file(results: list, session_path: str) -> None:
     """
     Save search results as a Markdown file in the session folder.
-
-    Creates a file like:
-        # Search Results
-        ## 1. Title Here
-        - URL: https://example.com
-        - Snippet: Content preview...
 
     Args:
         results: List of result dicts with title, url, snippet
@@ -53,34 +35,24 @@ def web_search(query: str, session_path: str) -> list[dict]:
     """
     Search the web using Tavily API.
 
-    Flow:
-        1. Check cache → return cached results if fresh (less than 20 min)
-        2. Call Tavily API with the query
-        3. Extract title, url, snippet from each result
-        4. Save results to session/search_results.md
-        5. Cache results for future use
-
     Args:
-        query: Search query string (e.g., "A-Level Biology past papers")
-        session_path: Path to the session directory for saving results
+        query: Search query string
+        session_path: Path to the session directory
 
     Returns:
-        List of dicts, each with:
-            - title: Page title
-            - url: Page URL
-            - snippet: Short content preview
+        List of dicts with title, url, snippet
 
     Raises:
-        ValueError: If TAVILY_API_KEY is not set in environment
+        ValueError: If TAVILY_API_KEY is not set
     """
     # Step 1: Check cache
-    cache_key = _create_cache_key(query)
+    cache_key = create_cache_key("search", query)
     if is_cache_valid(session_path, cache_key):
         cached = load_from_cache(session_path, cache_key)
         if cached is not None:
             return cached
 
-    # Step 2: Get API key from settings — fail fast if missing
+    # Step 2: Get API key — fail fast if missing
     if not settings.TAVILY_API_KEY:
         raise ValueError(
             "TAVILY_API_KEY not found. "

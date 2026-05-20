@@ -1,20 +1,18 @@
 """
 Summarize tool for TopicTrace using GLM-5.1 via NVIDIA NIM.
 
-Uses the OpenAI client to connect to NVIDIA's NIM API endpoint.
+Uses the call_llm function from provider/llm.py.
 GLM-5.1 is a powerful model for summarization tasks.
 """
 
 import os
-from openai import OpenAI
 from topictrace import settings
+from topictrace.provider.llm import call_llm
 
 
 def _save_summary_to_file(summary: str, session_path: str) -> None:
     """
     Save summary to the summaries directory.
-
-    Creates a numbered file like summary_1.md, summary_2.md, etc.
 
     Args:
         summary: The summary text to save
@@ -36,10 +34,6 @@ def summarize(content: str, query: str, session_path: str) -> str:
     """
     Summarize content using GLM-5.1 based on the user's query.
 
-    Sends the content and query to GLM-5.1 via NVIDIA NIM.
-    The model produces a concise summary relevant to the query.
-    Results are streamed and saved to session folder.
-
     Args:
         content: The full text to summarize (from web_fetch)
         query: The user's original question (for context)
@@ -49,22 +43,11 @@ def summarize(content: str, query: str, session_path: str) -> str:
         A concise summary string
 
     Raises:
-        ValueError: If content is empty or API key is missing
+        ValueError: If content is empty
         Exception: If NVIDIA NIM API call fails
     """
     if not content or not content.strip():
         raise ValueError("Content cannot be empty for summarization")
-
-    if not settings.NVIDIA_API_KEY:
-        raise ValueError(
-            "NVIDIA_API_KEY not found. "
-            "Set it in your .env file: NVIDIA_API_KEY=your-key-here"
-        )
-
-    client = OpenAI(
-        base_url=settings.NVIDIA_BASE_URL,
-        api_key=settings.NVIDIA_API_KEY
-    )
 
     messages = [
         {
@@ -85,27 +68,7 @@ def summarize(content: str, query: str, session_path: str) -> str:
         }
     ]
 
-    # Call GLM-5.1 via NVIDIA NIM with streaming
-    completion = client.chat.completions.create(
-        model=settings.NVIDIA_MODEL,
-        messages=messages,
-        temperature=settings.SUMMARIZE_TEMPERATURE,
-        max_tokens=settings.SUMMARIZE_MAX_TOKENS,
-        stream=True
-    )
-
-    # Collect streamed response
-    summary_parts = []
-    for chunk in completion:
-        if not getattr(chunk, "choices", None):
-            continue
-        if len(chunk.choices) == 0:
-            continue
-        delta = chunk.choices[0].delta
-        if getattr(delta, "content", None) is not None:
-            summary_parts.append(delta.content)
-
-    summary = "".join(summary_parts)
+    summary = call_llm(messages)
 
     # Save summary to file
     _save_summary_to_file(summary, session_path)

@@ -5,22 +5,13 @@ from topictrace.session import create_session
 from topictrace.tools.summarize import summarize
 
 
-@patch("topictrace.settings.NVIDIA_API_KEY", "test-api-key")
-@patch("topictrace.tools.summarize.OpenAI")
-def test_summarize_returns_summary_string(MockOpenAI):
+@patch("topictrace.tools.summarize.call_llm")
+def test_summarize_returns_summary_string(mock_call_llm):
     """Test that summarize returns a summary string from GLM-5.1."""
     session_name = "test-summarize-return"
     session_path = create_session(session_name)
 
-    mock_client = MagicMock()
-    MockOpenAI.return_value = mock_client
-
-    mock_chunk = MagicMock()
-    mock_chunk.choices = [MagicMock()]
-    mock_chunk.choices[0].delta.content = "Python is a high-level programming language."
-    mock_chunk.choices[0].delta.reasoning_content = None
-
-    mock_client.chat.completions.create.return_value = [mock_chunk]
+    mock_call_llm.return_value = "Python is a high-level programming language."
 
     content = "Python is a programming language that lets you work quickly..."
     query = "What is Python?"
@@ -34,16 +25,13 @@ def test_summarize_returns_summary_string(MockOpenAI):
     shutil.rmtree(session_path)
 
 
-@patch("topictrace.settings.NVIDIA_API_KEY", "test-api-key")
-@patch("topictrace.tools.summarize.OpenAI")
-def test_summarize_handles_api_error(MockOpenAI):
+@patch("topictrace.tools.summarize.call_llm")
+def test_summarize_handles_api_error(mock_call_llm):
     """Test that summarize raises exception when API fails."""
     session_name = "test-summarize-error"
     session_path = create_session(session_name)
 
-    mock_client = MagicMock()
-    MockOpenAI.return_value = mock_client
-    mock_client.chat.completions.create.side_effect = Exception("API Error")
+    mock_call_llm.side_effect = Exception("API Error")
 
     content = "Some content"
     query = "Summarize this"
@@ -56,22 +44,13 @@ def test_summarize_handles_api_error(MockOpenAI):
     shutil.rmtree(session_path)
 
 
-@patch("topictrace.settings.NVIDIA_API_KEY", "test-api-key")
-@patch("topictrace.tools.summarize.OpenAI")
-def test_summarize_saves_to_summaries_directory(MockOpenAI):
+@patch("topictrace.tools.summarize.call_llm")
+def test_summarize_saves_to_summaries_directory(mock_call_llm):
     """Test that summarize saves the summary to summaries/ directory."""
     session_name = "test-summarize-save"
     session_path = create_session(session_name)
 
-    mock_client = MagicMock()
-    MockOpenAI.return_value = mock_client
-
-    mock_chunk = MagicMock()
-    mock_chunk.choices = [MagicMock()]
-    mock_chunk.choices[0].delta.content = "Summary saved."
-    mock_chunk.choices[0].delta.reasoning_content = None
-
-    mock_client.chat.completions.create.return_value = [mock_chunk]
+    mock_call_llm.return_value = "Summary saved."
 
     summarize("content", "query", session_path)
 

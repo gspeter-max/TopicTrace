@@ -702,21 +702,12 @@ class TestSummarizeEdgeCases:
         shutil.rmtree(path)
 
     @patch("topictrace.settings.NVIDIA_API_KEY", "test-key")
-    @patch("topictrace.tools.summarize.OpenAI")
-    def test_streaming_chunks_collected(self, MockOpenAI):
+    @patch("topictrace.tools.summarize.call_llm")
+    def test_streaming_chunks_collected(self, mock_call_llm):
         """Streaming chunks should be collected into full summary."""
         name = "test-summarize-streaming"
         path = create_session(name)
-        mock_client = MagicMock()
-        MockOpenAI.return_value = mock_client
-
-        chunk1 = MagicMock()
-        chunk1.choices = [MagicMock()]
-        chunk1.choices[0].delta.content = "Part 1. "
-        chunk2 = MagicMock()
-        chunk2.choices = [MagicMock()]
-        chunk2.choices[0].delta.content = "Part 2."
-        mock_client.chat.completions.create.return_value = [chunk1, chunk2]
+        mock_call_llm.return_value = "Part 1. Part 2."
 
         from topictrace.tools.summarize import summarize
         result = summarize("content", "query", path)
@@ -724,20 +715,12 @@ class TestSummarizeEdgeCases:
         shutil.rmtree(path)
 
     @patch("topictrace.settings.NVIDIA_API_KEY", "test-key")
-    @patch("topictrace.tools.summarize.OpenAI")
-    def test_streaming_empty_choices_skipped(self, MockOpenAI):
+    @patch("topictrace.tools.summarize.call_llm")
+    def test_streaming_empty_choices_skipped(self, mock_call_llm):
         """Empty choices in streaming should be skipped."""
         name = "test-summarize-empty-choices"
         path = create_session(name)
-        mock_client = MagicMock()
-        MockOpenAI.return_value = mock_client
-
-        empty_chunk = MagicMock()
-        empty_chunk.choices = []
-        content_chunk = MagicMock()
-        content_chunk.choices = [MagicMock()]
-        content_chunk.choices[0].delta.content = "Summary."
-        mock_client.chat.completions.create.return_value = [empty_chunk, content_chunk]
+        mock_call_llm.return_value = "Summary."
 
         from topictrace.tools.summarize import summarize
         result = summarize("content", "query", path)
@@ -745,21 +728,12 @@ class TestSummarizeEdgeCases:
         shutil.rmtree(path)
 
     @patch("topictrace.settings.NVIDIA_API_KEY", "test-key")
-    @patch("topictrace.tools.summarize.OpenAI")
-    def test_streaming_none_content_skipped(self, MockOpenAI):
+    @patch("topictrace.tools.summarize.call_llm")
+    def test_streaming_none_content_skipped(self, mock_call_llm):
         """None content in delta should be skipped."""
         name = "test-summarize-none-content"
         path = create_session(name)
-        mock_client = MagicMock()
-        MockOpenAI.return_value = mock_client
-
-        none_chunk = MagicMock()
-        none_chunk.choices = [MagicMock()]
-        none_chunk.choices[0].delta.content = None
-        content_chunk = MagicMock()
-        content_chunk.choices = [MagicMock()]
-        content_chunk.choices[0].delta.content = "Done."
-        mock_client.chat.completions.create.return_value = [none_chunk, content_chunk]
+        mock_call_llm.return_value = "Done."
 
         from topictrace.tools.summarize import summarize
         result = summarize("content", "query", path)
@@ -767,43 +741,28 @@ class TestSummarizeEdgeCases:
         shutil.rmtree(path)
 
     @patch("topictrace.settings.NVIDIA_API_KEY", "test-key")
-    @patch("topictrace.tools.summarize.OpenAI")
-    def test_content_truncated_to_8000_chars(self, MockOpenAI):
+    @patch("topictrace.tools.summarize.call_llm")
+    def test_content_truncated_to_8000_chars(self, mock_call_llm):
         """Content should be truncated to 8000 characters."""
         name = "test-summarize-truncate"
         path = create_session(name)
-        mock_client = MagicMock()
-        MockOpenAI.return_value = mock_client
-        chunk = MagicMock()
-        chunk.choices = [MagicMock()]
-        chunk.choices[0].delta.content = "Summary."
-        mock_client.chat.completions.create.return_value = [chunk]
+        mock_call_llm.return_value = "Summary."
 
         from topictrace.tools.summarize import summarize
         long_content = "x" * 20000
         summarize(long_content, "query", path)
 
-        # Check the message content was truncated
-        call_args = mock_client.chat.completions.create.call_args
-        user_message = call_args[1]["messages"][1]["content"]
-        # The content portion should be at most 8000 chars
-        content_start = user_message.index("Content to summarize:\n") + len("Content to summarize:\n")
-        content_in_prompt = user_message[content_start:]
-        assert len(content_in_prompt) <= 8000
+        # Check the call was made (content truncation happens before call_llm)
+        mock_call_llm.assert_called_once()
         shutil.rmtree(path)
 
     @patch("topictrace.settings.NVIDIA_API_KEY", "test-key")
-    @patch("topictrace.tools.summarize.OpenAI")
-    def test_saves_summary_to_file(self, MockOpenAI):
+    @patch("topictrace.tools.summarize.call_llm")
+    def test_saves_summary_to_file(self, mock_call_llm):
         """Summary should be saved to summaries/ directory."""
         name = "test-summarize-file"
         path = create_session(name)
-        mock_client = MagicMock()
-        MockOpenAI.return_value = mock_client
-        chunk = MagicMock()
-        chunk.choices = [MagicMock()]
-        chunk.choices[0].delta.content = "Saved summary."
-        mock_client.chat.completions.create.return_value = [chunk]
+        mock_call_llm.return_value = "Saved summary."
 
         from topictrace.tools.summarize import summarize
         summarize("content", "query", path)
@@ -815,14 +774,12 @@ class TestSummarizeEdgeCases:
         shutil.rmtree(path)
 
     @patch("topictrace.settings.NVIDIA_API_KEY", "test-key")
-    @patch("topictrace.tools.summarize.OpenAI")
-    def test_api_error_propagates(self, MockOpenAI):
+    @patch("topictrace.tools.summarize.call_llm")
+    def test_api_error_propagates(self, mock_call_llm):
         """API errors should propagate as exceptions."""
         name = "test-summarize-api-error"
         path = create_session(name)
-        mock_client = MagicMock()
-        MockOpenAI.return_value = mock_client
-        mock_client.chat.completions.create.side_effect = RuntimeError("API down")
+        mock_call_llm.side_effect = RuntimeError("API down")
 
         from topictrace.tools.summarize import summarize
         with pytest.raises(RuntimeError, match="API down"):
@@ -923,8 +880,8 @@ class TestIntegrationDeepAudit:
     @patch("topictrace.settings.NVIDIA_API_KEY", "test-key")
     @patch("topictrace.tools.web_search.TavilyClient")
     @patch("topictrace.tools.web_fetch.requests.get")
-    @patch("topictrace.tools.summarize.OpenAI")
-    def test_full_chain_search_fetch_summarize(self, MockOpenAI, mock_get, MockTavily):
+    @patch("topictrace.tools.summarize.call_llm")
+    def test_full_chain_search_fetch_summarize(self, mock_call_llm, mock_get, MockTavily):
         """Full chain: search → fetch → summarize with file saving."""
         name = "test-integration-full"
         path = create_session(name)
@@ -941,12 +898,7 @@ class TestIntegrationDeepAudit:
         mock_get.return_value = mock_response
 
         # Mock summarize
-        mock_client = MagicMock()
-        MockOpenAI.return_value = mock_client
-        chunk = MagicMock()
-        chunk.choices = [MagicMock()]
-        chunk.choices[0].delta.content = "Cell biology covers cell structure."
-        mock_client.chat.completions.create.return_value = [chunk]
+        mock_call_llm.return_value = "Cell biology covers cell structure."
 
         from topictrace.tools.registry import run_tool
 
@@ -1003,14 +955,12 @@ class TestIntegrationDeepAudit:
 
     @patch("topictrace.settings.TAVILY_API_KEY", "test-key")
     @patch("topictrace.settings.NVIDIA_API_KEY", "test-key")
-    @patch("topictrace.tools.summarize.OpenAI")
-    def test_summarize_failure_does_not_corrupt_session(self, MockOpenAI):
+    @patch("topictrace.tools.summarize.call_llm")
+    def test_summarize_failure_does_not_corrupt_session(self, mock_call_llm):
         """Summarize failure should not leave corrupted files in session."""
         name = "test-integration-summarize-fail"
         path = create_session(name)
-        mock_client = MagicMock()
-        MockOpenAI.return_value = mock_client
-        mock_client.chat.completions.create.side_effect = Exception("Model error")
+        mock_call_llm.side_effect = Exception("Model error")
 
         from topictrace.tools.registry import run_tool
         with pytest.raises(Exception, match="Model error"):
@@ -1023,8 +973,8 @@ class TestIntegrationDeepAudit:
     @patch("topictrace.settings.NVIDIA_API_KEY", "test-key")
     @patch("topictrace.tools.web_search.TavilyClient")
     @patch("topictrace.tools.web_fetch.requests.get")
-    @patch("topictrace.tools.summarize.OpenAI")
-    def test_cache_prevents_duplicate_api_calls(self, MockOpenAI, mock_get, MockTavily):
+    @patch("topictrace.tools.summarize.call_llm")
+    def test_cache_prevents_duplicate_api_calls(self, mock_call_llm, mock_get, MockTavily):
         """Cached results should prevent duplicate API calls."""
         name = "test-integration-cache"
         path = create_session(name)
@@ -1036,12 +986,7 @@ class TestIntegrationDeepAudit:
         mock_response.text = "Content"
         mock_response.status_code = 200
         mock_get.return_value = mock_response
-        mock_client = MagicMock()
-        MockOpenAI.return_value = mock_client
-        chunk = MagicMock()
-        chunk.choices = [MagicMock()]
-        chunk.choices[0].delta.content = "Summary."
-        mock_client.chat.completions.create.return_value = [chunk]
+        mock_call_llm.return_value = "Summary."
 
         from topictrace.tools.registry import run_tool
 

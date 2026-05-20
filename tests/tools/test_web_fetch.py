@@ -82,9 +82,10 @@ def test_web_fetch_uses_cache_when_valid(mock_get):
     session_path = create_session(session_name)
 
     # Pre-populate cache
-    from topictrace.cache import save_to_cache
+    from topictrace.cache import save_to_cache, create_cache_key
     cached_content = "# Cached Page\n\nThis is cached content."
-    save_to_cache(session_path, "fetch_https---example-com", cached_content)
+    cache_key = create_cache_key("fetch", "https://example.com")
+    save_to_cache(session_path, cache_key, cached_content)
 
     # Should return cached content without making HTTP request
     content = web_fetch("https://example.com", session_path)
