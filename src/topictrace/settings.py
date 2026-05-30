@@ -18,6 +18,17 @@ LLM_API_KEY = os.getenv("LLM_API_KEY")
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 
 # ============================================================
+# Startup validation — fail fast with clear message
+# ============================================================
+_required = {"LLM_API_KEY": LLM_API_KEY, "TAVILY_API_KEY": TAVILY_API_KEY}
+_missing = [k for k, v in _required.items() if not v]
+if _missing:
+    raise SystemExit(
+        f"Missing required env vars: {', '.join(_missing)}\n"
+        f"Copy .env.example to .env and fill in your keys."
+    )
+
+# ============================================================
 # Jina Reader API
 # ============================================================
 JINA_READER_BASE_URL = "https://r.jina.ai/"
