@@ -1,40 +1,24 @@
+"""LLM provider for TopicTrace using OpenAI-compatible API."""
 
-from openai import OpenAI
 from topictrace import settings
+from langchain_openai import ChatOpenAI
+import httpx 
 
-
-def call_llm(messages: list[dict], temperature: float = None, max_tokens: int = None) -> str:
-    """
-    Call GLM-5.1 via NVIDIA NIM and return the response.
-
-    """
-    if not settings.NVIDIA_API_KEY:
-        raise ValueError(
-            "NVIDIA_API_KEY not found. "
-            "Set it in your .env file: NVIDIA_API_KEY=your-key-here"
-        )
-
-    client = OpenAI(
-        base_url=settings.NVIDIA_BASE_URL,
-        api_key=settings.NVIDIA_API_KEY
+def get_llm():
+    http_client = httpx.Client(
+        headers={"Accept-Encoding": "identity"},  # accept plain text ( no transformation of data )
+        timeout=60
+    )
+    return ChatOpenAI(
+        base_url = settings.LLM_BASE_URL,
+        model = settings.LLM_MODEL,
+        api_key = settings.LLM_API_KEY,
+        temperature=settings.SUMMARIZE_TEMPERATURE,
+        http_client=http_client
     )
 
-    completion = client.chat.completions.create(
-        model=settings.NVIDIA_MODEL,
-        messages=messages,
-        temperature=temperature or settings.SUMMARIZE_TEMPERATURE,
-        max_tokens=max_tokens or settings.SUMMARIZE_MAX_TOKENS,
-        stream=True
-    )
+def get_llm_with_tools(tools : list ):
+    llm = get_llm() 
+    return llm.bind_tools(tools) 
 
-    response_parts = []
-    for chunk in completion:
-        if not getattr(chunk, "choices", None):
-            continue
-        if len(chunk.choices) == 0:
-            continue
-        delta = chunk.choices[0].delta
-        if getattr(delta, "content", None) is not None:
-            response_parts.append(delta.content)
 
-    return "".join(response_parts)

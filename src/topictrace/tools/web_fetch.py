@@ -1,82 +1,118 @@
-"""
-Web fetch tool for TopicTrace using Jina Reader.
+"""Web fetch tool for TopicTrace using Jina Reader."""
 
-Jina Reader converts any URL to clean Markdown.
-Just prepend "https://r.jina.ai/" to any URL.
-
-No fallback — Jina Reader is the only fetch provider.
-"""
-
-import os
-import requests
-from topictrace import settings
+import httpx
+import asyncio
+from topictrace import settings, log
 from topictrace.cache import save_to_cache, load_from_cache, is_cache_valid, create_cache_key
+from langchain_core.tools import tool
+from topictrace.session import save_numberd_file
 
 
-def _save_content_to_file(content: str, url: str, session_path: str) -> None:
-    """
-    Save fetched Markdown content to the fetched_pages directory.
-
-    Args:
-        content: The Markdown content to save
-        url: The source URL (saved as a comment in the file)
-        session_path: Path to the session directory
-    """
-    fetched_dir = os.path.join(session_path, "fetched_pages")
-
-    # Count existing files to determine the next number
-    existing_files = [f for f in os.listdir(fetched_dir) if f.endswith(".md")]
-    next_number = len(existing_files) + 1
-
-    filename = f"page_{next_number}.md"
-    filepath = os.path.join(fetched_dir, filename)
-
-    with open(filepath, "w") as f:
-        f.write(f"<!-- Source: {url} -->\n\n")
-        f.write(content)
-
-
-def web_fetch(url: str, session_path: str) -> str:
-    """
-    Fetch a web page and convert it to clean Markdown.
+@tool 
+async def web_fetch(url, session_path: str) -> list[dict]:
+    """Fetch URLs via Jina Reader, save content, return list of result dicts.
 
     Args:
-        url: The URL to fetch
-        session_path: Path to the session directory
+        url: A single URL string or a list of URLs.
+        session_path: Session directory path for caching and file storage.
 
     Returns:
-        Clean Markdown content as a string
-
-    Raises:
-        ValueError: If url is empty
-        Exception: If Jina Reader returns a non-200 status code
+        List of dicts: [{"url": ..., "status": 200, "content": "..."}, ...]
     """
-    # Validate input
-    if not url or not url.strip():
-        raise ValueError("URL cannot be empty")
-
-    # Step 1: Check cache
-    cache_key = create_cache_key("fetch", url)
-    if is_cache_valid(session_path, cache_key):
-        cached = load_from_cache(session_path, cache_key)
-        if cached is not None:
-            return cached
-
-    # Step 2: Call Jina Reader API
-    jina_url = f"{settings.JINA_READER_BASE_URL}{url}"
-    response = requests.get(jina_url, timeout=settings.FETCH_TIMEOUT_SECONDS)
-
-    # Step 3: Check for errors
-    if response.status_code != 200:
-        raise Exception(
-            f"Jina Reader returned status {response.status_code} "
-            f"for URL: {url}"
+    # Normalize input: accept str or list
+    if isinstance(url, str):
+        urls = [url]
+    elif isinstance(url, list):
+        urls = url
+    else:
+        error_message = (
+            f"url parameter must be str or list, got {type(url).__name__}"
         )
+        log.warning("invalid_input", error=error_message)
+        return [{"url": "", "status": "error", "content": error_message}]
 
-    content = response.text
+    results = []
 
-    # Step 4: Save to file and cache
-    _save_content_to_file(content, url, session_path)
-    save_to_cache(session_path, cache_key, content)
+    try:
+        # Step 1: Separate cached vs uncached URLs
+        uncached_urls = []
+        for u in urls:
+            if not u or not u.strip():
+                results.append({
+                    "url": u,
+                    "status": "error",
+                    "content": "URL cannot be empty"
+                })
+                continue
+            cache_key = create_cache_key("fetch", u)
+            if is_cache_valid(session_path, cache_key):
+                cached = load_from_cache(session_path, cache_key)
+                if cached is not None:
+                    log.info("cache_hit", url=u)
+                    results.append({"url": u, "status": 200, "content": cached})
+                    continue
+            uncached_urls.append(u)
 
-    return content
+        if not uncached_urls:
+            return results
+
+        # Step 2: Fetch uncached URLs in parallel
+        async with httpx.AsyncClient(timeout=settings.FETCH_TIMEOUT_SECONDS) as client:
+            tasks = [
+                client.get(f"{settings.JINA_READER_BASE_URL}{url}")
+                for url in uncached_urls
+            ]
+            responses = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Step 3: Process each response
+        for url, response in zip(uncached_urls, responses):
+            # Handle network-level exceptions (timeout, connection error, etc.)
+            if isinstance(response, Exception):
+                log.warning("fetch_failed", url=url, error=str(response))
+                results.append({
+                    "url": url,
+                    "status": "error",
+                    "content": f"Request failed: {response}"
+                })
+                continue
+
+            # Handle non-200 status codes (451, 403, 404, etc.)
+            if response.status_code != 200:
+                log.warning(
+                    f"feteching fail due to : {response.status_code}",
+                    url=url,
+                    status_code=response.status_code,
+                )
+                results.append({
+                    "url": url,
+                    "status": response.status_code,
+                    "content": None,
+                })
+                continue
+
+            # Success: save to file and cache
+            content = response.text
+            save_numberd_file(
+                content=f"<!-- Source: {url} -->\n\n{content}",
+                subdir="fetched_pages",
+                prefix="page",
+                session_path=session_path
+            )
+            cache_key = create_cache_key("fetch", url)
+            save_to_cache(session_path, cache_key, content)
+            log.info("fetch_success", url=url, chars=len(content))
+            results.append({"url": url, "status": 200, "content": content})
+
+    except httpx.HTTPError as e:
+        log.error("http_error", error=str(e))
+        results.append({"url": "", "status": "error", "content": f"HTTP error: {e}"})
+    except OSError as e:
+        log.error("os_error", error=str(e))
+        results.append({"url": "", "status": "error", "content": f"File system error: {e}"})
+    except Exception as e:
+        log.error("unexpected_error", error=str(e))
+        results.append({"url": "", "status": "error", "content": f"Unexpected error: {e}"})
+    finally:
+        log.info("fetch_batch_complete", total=len(urls), success=sum(1 for r in results if r["status"] == 200))
+
+    return results

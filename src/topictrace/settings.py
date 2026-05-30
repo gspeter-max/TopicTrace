@@ -1,10 +1,4 @@
-"""
-Central configuration for TopicTrace.
-
-All constants, API endpoints, and tunable values live here.
-Import as: from topictrace import settings
-Use as: settings.NVIDIA_MODEL
-"""
+"""Central configuration and constants for TopicTrace."""
 
 import os
 from dotenv import load_dotenv
@@ -12,11 +6,11 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # ============================================================
-# NVIDIA NIM API
+# LLM Provider (OpenGateway — mimo-v2.5-pro)
 # ============================================================
-NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
-NVIDIA_MODEL = "z-ai/glm-5.1"
-NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY")
+LLM_BASE_URL = "https://opengateway.gitlawb.com/v1"
+LLM_MODEL = "mimo-v2.5-pro"
+LLM_API_KEY = os.getenv("LLM_API_KEY")
 
 # ============================================================
 # Tavily Search API
