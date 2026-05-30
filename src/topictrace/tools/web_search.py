@@ -28,17 +28,18 @@ def _extract_single_result(item: dict) -> dict:
         "snippet": item.get("content", "")[:settings.SEARCH_SNIPPET_MAX_CHARS],
     }
 
-@tool 
-async def web_search(query: str | list[str], session_path: str) -> list[dict]:
+@tool
+async def web_search(query: str | list[str]) -> list[dict]:
     """Search the web using Tavily API, save the results, and return them as a list of dicts.
 
     Args:
         query: A single query string or a list of query strings.
-        session_path: Session directory path for caching and file storage.
 
     Returns:
         List of dicts: [{"title": ..., "url": ..., "snippet": ...}, ...]
     """
+    from topictrace.session import create_session
+    session_path = create_session(query[:50] if isinstance(query, str) else query[0][:50])
 
     if isinstance(query, str):
         query = [query]

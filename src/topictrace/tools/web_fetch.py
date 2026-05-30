@@ -8,17 +8,20 @@ from langchain_core.tools import tool
 from topictrace.session import save_numberd_file
 
 
-@tool 
-async def web_fetch(url, session_path: str) -> list[dict]:
+@tool
+async def web_fetch(url, query: str) -> list[dict]:
     """Fetch URLs via Jina Reader, save content, return list of result dicts.
 
     Args:
         url: A single URL string or a list of URLs.
-        session_path: Session directory path for caching and file storage.
+        query: The original research query (used to determine session folder).
 
     Returns:
         List of dicts: [{"url": ..., "status": 200, "content": "..."}, ...]
     """
+    from topictrace.session import create_session
+    session_path = create_session(query[:50])
+
     # Normalize input: accept str or list
     if isinstance(url, str):
         urls = [url]

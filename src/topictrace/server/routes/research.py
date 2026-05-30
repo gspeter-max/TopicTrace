@@ -1,28 +1,45 @@
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 from topictrace.server.schemas.research import ResearchRequest, ResearchResponse
 from topictrace.prompts.agent_system import get_user_prompt
-from topictrace.session import create_session
 from langchain_core.messages import HumanMessage
-from topictrace.agents.graph import app 
-from topictrace import log 
+from topictrace.agents.graph import app
+from topictrace import log
+import json
 
-
-research_router = APIRouter() 
+research_router = APIRouter()
 
 @research_router.post("/research", response_model= ResearchResponse)
 async def research( request_input : ResearchRequest):
     try:
-        session_path =  create_session(request_input.query[:50])
         state = {
             "messages" : [HumanMessage(content = get_user_prompt(request_input.query))],
-            "session_path" : session_path
         }
         response = await app.ainvoke(state)
         return ResearchResponse(answer = response['messages'][-1].content)
     except Exception as e:
         log.exception(f'gettings error : {e}')
         raise HTTPException(
-            status_code = 500, 
+            status_code = 500,
             detail= f"error in research agent {e}"
-        ) from e 
+        ) from e
 
+async def streaming_yeild_generater(query: str ):
+    """"Yields SSE-formatted tokens as LLM produces them. """
+    state = {
+        "messages" : [HumanMessage(content = get_user_prompt(query))],
+    }
+    async for event in app.astream_events(state , version="v2"):
+        if event["event"] == "on_chat_model_stream":
+            token = event['data']["chunk"].content 
+            if token:
+                yield f"data: {json.dumps({'token' : token})}\n\n"
+    
+    yield "data: [DONE]\n\n"
+
+@research_router.post("/research/stream")
+async def research_stream(request_input : ResearchRequest) -> StreamingResponse:
+    return StreamingResponse(
+        streaming_yeild_generater(request_input.query),
+        media_type= "text/event-stream"
+    )

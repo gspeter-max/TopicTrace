@@ -5,9 +5,12 @@ from topictrace.provider.llm import get_llm
 from langchain_core.tools import tool 
 from topictrace.session import save_numberd_file
 
-@tool 
-async def summarize(content: str, query: str, session_path: str) -> str:
+@tool
+async def summarize(content: str, query: str) -> str:
     """Summarize content using llm based on the query and save it to the session folder."""
+    from topictrace.session import create_session
+    session_path = create_session(query[:50])
+
     if not content or not content.strip():
         log.warning("Content cannot be empty for summarization")
 
