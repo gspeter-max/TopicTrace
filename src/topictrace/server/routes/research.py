@@ -26,16 +26,24 @@ async def research( request_input : ResearchRequest):
 
 async def streaming_yeild_generater(query: str ):
     """"Yields SSE-formatted tokens as LLM produces them. """
-    state = {
-        "messages" : [HumanMessage(content = get_user_prompt(query))],
-    }
-    async for event in app.astream_events(state , version="v2"):
-        if event["event"] == "on_chat_model_stream":
-            token = event['data']["chunk"].content 
-            if token:
-                yield f"data: {json.dumps({'token' : token})}\n\n"
     
-    yield "data: [DONE]\n\n"
+    try: 
+        state = {
+            "messages" : [HumanMessage(content = get_user_prompt(query))],
+        }
+        async for event in app.astream_events(state , version="v2"):
+            if event["event"] == "on_chat_model_stream":
+                token = event['data']["chunk"].content 
+                if token:
+                    yield f"data: {json.dumps({'token' : token})}\n\n"
+                
+            if event.get("name", None) in ("web_search", "web_fetch", "summarize"):
+                yield f"data: {json.dumps({'status': 'toolCalling','tool' : event['name']})}\n\n"
+    
+    except Exception as e:
+        yield f"data: {json.dumps({'status': 'error','error' : {e}})}\n\n"
+    finally:
+        yield "data: [DONE]\n\n"
 
 @research_router.post("/research/stream")
 async def research_stream(request_input : ResearchRequest) -> StreamingResponse:
