@@ -41,7 +41,7 @@ async def streaming_yeild_generater(query: str ):
                 yield f"data: {json.dumps({'status': 'toolCalling','tool' : event['name']})}\n\n"
     
     except Exception as e:
-        yield f"data: {json.dumps({'status': 'error','error' : {e}})}\n\n"
+        yield f"data: {json.dumps({'status': 'error','error' : str(e)})}\n\n"
     finally:
         yield "data: [DONE]\n\n"
 
