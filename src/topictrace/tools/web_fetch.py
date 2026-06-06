@@ -1,26 +1,24 @@
-"""Web fetch tool for TopicTrace using Jina Reader."""
+"""Web fetch tool for TopicTrace using Jina Reader + LLM summarization."""
 
-import httpx
 import asyncio
-from topictrace import settings, log
-from topictrace.cache import save_to_cache, load_from_cache, is_cache_valid, create_cache_key
+import httpx
 from langchain_core.tools import tool
-from topictrace.session import save_numberd_file
+from topictrace import settings, log
+from topictrace.tools.cache import save_to_cache, load_from_cache, generate_fetch_cache_key
+from topictrace.provider.llm import get_llm
 
 
 @tool
 async def web_fetch(url, query: str) -> list[dict]:
-    """Fetch URLs via Jina Reader, save content, return list of result dicts.
+    """Fetch URLs via Jina Reader, summarize with LLM, cache results.
 
-    Args:
+    Args: 
         url: A single URL string or a list of URLs.
-        query: The original research query (used to determine session folder).
+        query: The original research query (used for cache key and summarization).
 
     Returns:
         List of dicts: [{"url": ..., "status": 200, "content": "..."}, ...]
     """
-    from topictrace.session import create_session
-    session_path = create_session(query[:50])
 
     # Normalize input: accept str or list
     if isinstance(url, str):
@@ -38,7 +36,7 @@ async def web_fetch(url, query: str) -> list[dict]:
 
     try:
         # Step 1: Separate cached vs uncached URLs
-        uncached_urls = []
+        uncached_urls = []  # list of (url, cache_key) tuples
         for u in urls:
             if not u or not u.strip():
                 results.append({
@@ -47,14 +45,14 @@ async def web_fetch(url, query: str) -> list[dict]:
                     "content": "URL cannot be empty"
                 })
                 continue
-            cache_key = create_cache_key("fetch", u)
-            if is_cache_valid(session_path, cache_key):
-                cached = load_from_cache(session_path, cache_key)
-                if cached is not None:
-                    log.info("cache_hit", url=u)
-                    results.append({"url": u, "status": 200, "content": cached})
-                    continue
-            uncached_urls.append(u)
+
+            cache_key = generate_fetch_cache_key(query, u)
+            cached = load_from_cache(cache_key)
+            if cached is not None:
+                log.info("[WEB_FETCH] cache hit", url=u)
+                results.append({"url": u, "status": 200, "content": cached})
+                continue
+            uncached_urls.append((u, cache_key))
 
         if not uncached_urls:
             return results
@@ -62,49 +60,62 @@ async def web_fetch(url, query: str) -> list[dict]:
         # Step 2: Fetch uncached URLs in parallel
         async with httpx.AsyncClient(timeout=settings.FETCH_TIMEOUT_SECONDS) as client:
             tasks = [
-                client.get(f"{settings.JINA_READER_BASE_URL}{url}")
-                for url in uncached_urls
+                client.get(f"{settings.JINA_READER_BASE_URL}{u}")
+                for u, _ in uncached_urls
             ]
             responses = await asyncio.gather(*tasks, return_exceptions=True)
 
         # Step 3: Process each response
-        for url, response in zip(uncached_urls, responses):
+        for (u, cache_key), http_response in zip(uncached_urls, responses):
             # Handle network-level exceptions (timeout, connection error, etc.)
-            if isinstance(response, Exception):
-                log.warning("fetch_failed", url=url, error=str(response))
+            if isinstance(http_response, Exception):
+                log.warning("fetch_failed", url=u, error=str(http_response))
                 results.append({
-                    "url": url,
+                    "url": u,
                     "status": "error",
-                    "content": f"Request failed: {response}"
+                    "content": f"Request failed: {http_response}"
                 })
                 continue
 
             # Handle non-200 status codes (451, 403, 404, etc.)
-            if response.status_code != 200:
+            if http_response.status_code != 200:
                 log.warning(
-                    f"feteching fail due to : {response.status_code}",
-                    url=url,
-                    status_code=response.status_code,
+                    f"fetch failed: {http_response.status_code}",
+                    url=u,
+                    status_code=http_response.status_code,
                 )
                 results.append({
-                    "url": url,
-                    "status": response.status_code,
+                    "url": u,
+                    "status": http_response.status_code,
                     "content": None,
                 })
                 continue
+            content = http_response.text
 
-            # Success: save to file and cache
-            content = response.text
-            save_numberd_file(
-                content=f"<!-- Source: {url} -->\n\n{content}",
-                subdir="fetched_pages",
-                prefix="page",
-                session_path=session_path
-            )
-            cache_key = create_cache_key("fetch", url)
-            save_to_cache(session_path, cache_key, content)
-            log.info("fetch_success", url=url, chars=len(content))
-            results.append({"url": url, "status": 200, "content": content})
+            messages = [
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are a summarization assistant. "
+                            "Summarize the provided content in relation to the user's query. "
+                            "Be concise, factual, and focus on exam-relevant information. "
+                            "Output only the summary, no preamble."
+                        )
+                    },
+                    {
+                        "role": "user",
+                        "content": (
+                            f"Query: {query}\n\n"
+                            f"Content to summarize:\n{content[:settings.SUMMARIZE_MAX_INPUT_CHARS]}"
+                        )
+                    }
+            ]
+            llm = get_llm()
+            llm_response = await llm.ainvoke(messages)
+
+            save_to_cache(cache_key, llm_response.content)
+
+            results.append({"url": u, "status": 200, "content": llm_response.content})
 
     except httpx.HTTPError as e:
         log.error("http_error", error=str(e))

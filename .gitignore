@@ -20,6 +20,8 @@ wheels/
 .installed.cfg
 *.egg
 
+CHANGELOG.md
+rag/dockerHostedServices/neo4j
 # Virtual Environment
 .venv/
 venv/
@@ -47,5 +49,11 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
+
+# Output data
+graphify-out/
+
+# IDE / local configs
+.openclaude/
 
 

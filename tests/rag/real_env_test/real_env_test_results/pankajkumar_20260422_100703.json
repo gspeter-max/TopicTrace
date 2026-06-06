@@ -1,0 +1,10 @@
+{
+  "status": "error",
+  "failed_stage": "document_chunking",
+  "error_message": "'FilesResource' object has no attribute 'upload'",
+  "document_id": "",
+  "chunk_count": 0,
+  "relationship_count": 0,
+  "verification_report": null,
+  "output_path": "/Users/apple/project/documentInFo/tests/real_env_test/real_env_test_results/pankajkumar_20260422_100703.json"
+}

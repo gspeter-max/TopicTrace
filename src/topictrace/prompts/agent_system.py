@@ -34,19 +34,12 @@ _RESEARCH_DEPTH_CONFIG = {
 }
 
 
-def get_system_prompt(research_depth: str = "standard") -> str:
+def get_system_prompt() -> str:
     """Build the system prompt for the research agent.
-
-    Args:
-        research_depth: One of 'quick', 'standard', or 'deep'.
-            Controls how many tools calls the agent should make
-            and how detailed the final output should be.
 
     Returns:
         The full system prompt string.
     """
-    config = _RESEARCH_DEPTH_CONFIG.get(research_depth, _RESEARCH_DEPTH_CONFIG["standard"])
-
     return f"""You are TopicTrace — an AI research assistant built for exam preparation.
 
 ## Your Goal
@@ -60,19 +53,13 @@ You have three tools. Use them in this order:
    - Bad:  "physics questions"
    - Good: "CIE A-Level Physics 9702 Paper 4 past questions 2024"
 
-2. **web_fetch(url)** — Fetch a web page and convert it to clean Markdown.
+2. **web_fetch(url, query)** — Fetch a web page and convert it to clean Markdown.
    - Only fetch URLs that look genuinely useful from search results.
    - Skip login-walled, paywalled, or irrelevant pages.
 
 3. **summarize(content, query)** — Condense fetched page content into exam-focused highlights.
    - Always summarize long pages before presenting to the student.
    - Keep the student's original question as context.
-
-## Research Strategy ({research_depth} depth)
-{config['instruction']}
-- Make up to {config['max_searches']} search calls.
-- Fetch up to {config['max_fetches']} pages.
-- Final summary style: {config['summary_style']}.
 
 ## Output Rules
 - Always cite sources with URLs.
@@ -87,15 +74,29 @@ You have three tools. Use them in this order:
 - If the query is vague, make your best interpretation and proceed. Do not ask clarifying questions."""
 
 
-def get_user_prompt(query: str) -> str:
+def get_user_prompt(query: str, depth: str = "standard") -> str:
     """Build the user message content from the student's query.
 
-    Wraps the raw query with lightweight framing so the LLM
-    treats it as a research request rather than a chat message.
+    Wraps the raw query with depth-specific research instructions
+    so the LLM knows how deep to go.
 
+    Args:
+        query: The student's raw question.
+        depth: One of 'quick', 'standard', or 'deep'.
+
+    Returns:
+        The framed user prompt string.
     """
+    config = _RESEARCH_DEPTH_CONFIG.get(depth, _RESEARCH_DEPTH_CONFIG["standard"])
+
     return f"""Research the following and give me exam-relevant information:
 
 {query}
+
+## Research Strategy ({depth} depth)
+{config['instruction']}
+- Make up to {config['max_searches']} search calls.
+- Fetch up to {config['max_fetches']} pages.
+- Final summary style: {config['summary_style']}.
 
 Use your tools to search, fetch, and summarize. Cite all sources."""

@@ -1,0 +1,52 @@
+{
+  "status": "success",
+  "failed_stage": "",
+  "error_message": "",
+  "document_id": "pankajkumar.pdf",
+  "chunk_count": 3,
+  "relationship_count": 85,
+  "verification_report": {
+    "chunks_in_db": 3,
+    "relationships_in_db": 110,
+    "mentions_in_db": 104,
+    "sample_relationships": [
+      {
+        "source": "Pankaj Kumar",
+        "type": "RELATED_TO",
+        "target": "Structlog",
+        "evidence": "Observability: Structlog, Opik Observability",
+        "chunk_id": "pankajkumar.pdf::0"
+      },
+      {
+        "source": "Pankaj Kumar",
+        "type": "RELATED_TO",
+        "target": "vLLM Model Hosting & Inference Platform",
+        "evidence": "~~vLLM Model Hos ting & Inference Pla orm~~ Self-Hosted | Built a complete LLM orchestra on",
+        "chunk_id": "pankajkumar.pdf::1"
+      },
+      {
+        "source": "Pankaj Kumar",
+        "type": "RELATED_TO",
+        "target": "vibeVoice / Parakeet Flow v2",
+        "evidence": "~~vibeVoice / Parakeet Flow v2~~ \u2014 Local Push-to-Talk Voice-to-Text Tool",
+        "chunk_id": "pankajkumar.pdf::1"
+      },
+      {
+        "source": "Pankaj Kumar",
+        "type": "RELATED_TO",
+        "target": "DAV College, Abohar",
+        "evidence": "Bachelor of Science (B.Sc.) - Mathematics DAV College, Abohar (Panjab University) | Punjab, India -INROLE",
+        "chunk_id": "pankajkumar.pdf::1"
+      },
+      {
+        "source": "Pankaj Kumar",
+        "type": "RELATED_TO",
+        "target": "Con den al (Legal Tech)",
+        "evidence": "AI Backend Engineering Intern | Con den al (Legal Tech) / ~~luminova.ai~~ - Remote",
+        "chunk_id": "pankajkumar.pdf::1"
+      }
+    ],
+    "neo4j_status": "connected"
+  },
+  "output_path": "/Users/apple/project/documentInFo/tests/real_env_test/real_env_test_results/pankajkumar_20260422_112443.json"
+}

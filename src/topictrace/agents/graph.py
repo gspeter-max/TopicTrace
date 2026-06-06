@@ -1,13 +1,13 @@
 from langgraph.graph import StateGraph, START , END 
 from langgraph.prebuilt import ToolNode 
 from topictrace.agents.state import ResearchState
-from topictrace.tools import summarize, web_fetch, web_search
+from topictrace.tools import web_fetch, web_search
 from topictrace.provider.llm import get_llm_with_tools
 from topictrace.prompts.agent_system import get_system_prompt
 from langchain_core.messages import SystemMessage
 
 
-tools = [summarize,web_fetch,web_search]
+tools = [web_fetch, web_search]
 llm_with_tools = get_llm_with_tools(tools)
 
 def agent_node(state : ResearchState):

@@ -1,0 +1,35 @@
+[
+  {
+    "name": "Simple Factoid (Vector Fast Path)",
+    "query": "What is the email address of Pankaj Kumar?",
+    "expected_intent": "simple",
+    "actual_intent": "simple",
+    "used_graph_search": false,
+    "reason_for_graph_search": "",
+    "answer": "The email address of Pankaj Kumar is peter97986266@gmail.com.",
+    "duration_seconds": 7.035968260999653,
+    "num_context_items_used": 3
+  },
+  {
+    "name": "Simple Complex (Graph Escalation or Complex Intent)",
+    "query": "Which companies has Pankaj Kumar worked for, and what were his roles?",
+    "expected_intent": "complex",
+    "actual_intent": "complex",
+    "used_graph_search": true,
+    "reason_for_graph_search": "",
+    "answer": "Pankaj Kumar has worked for the following company:\n\n- **Con         den al (Legal      Tech)** (also referred to as luminova.ai) as an **AI Backend Engineering Intern** (Remote).",
+    "duration_seconds": 5.489757654999266,
+    "num_context_items_used": 3
+  },
+  {
+    "name": "Skill Verification",
+    "query": "Does Pankaj Kumar have experience with Python and FastAPI?",
+    "expected_intent": "simple",
+    "actual_intent": "simple",
+    "used_graph_search": false,
+    "reason_for_graph_search": "",
+    "answer": "Yes, Pankaj Kumar has experience with Python and FastAPI. In his role as an AI Backend Engineering Intern at a legal tech company, he built and owned a FastAPI backend supporting multiple AI pipelines. Additionally, his Technical Skills section lists Python 3.11 as one of his proficient languages.",
+    "duration_seconds": 2.828376958001172,
+    "num_context_items_used": 3
+  }
+]

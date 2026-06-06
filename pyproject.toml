@@ -5,7 +5,6 @@ description = "Educational predictive analytics agent for exam prep"
 requires-python = ">=3.10"
 dependencies = [
     "tavily-python>=0.5.0",
-    "structlog",
     "requests>=2.31.0",
     "openai>=1.50.0",
     "python-dotenv>=1.0.0",
@@ -17,6 +16,16 @@ dependencies = [
     "langchain-openai>=1.2.2",
     "fastapi>=0.136.3",
     "uvicorn>=0.48.0",
+    "psycopg[binary]>=3.3.4",
+    "psycopg-pool>=3.3.1",
+    "llama-cloud>=2.0.0",
+    "transformers>=4.40.0",
+    "langchain-text-splitters>=0.3.0",
+    "rapidfuzz>=3.9.0",
+    "pytest>=8.0.0",
+    "respx>=0.21.0",
+    "neo4j>=5.0.0",
+    "structlog>=23.3.0"
 ]
 
 [project.optional-dependencies]

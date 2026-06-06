@@ -13,6 +13,7 @@ from structlog.processors import CallsiteParameter, CallsiteParameterAdder
 # Configure structlog with a clean, readable console output format.
 structlog.configure(
     processors=[
+        structlog.contextvars.merge_contextvars,
         structlog.stdlib.add_log_level,
         CallsiteParameterAdder({
             CallsiteParameter.FILENAME,

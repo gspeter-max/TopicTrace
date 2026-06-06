@@ -1,0 +1,10 @@
+{
+  "status": "error",
+  "failed_stage": "graph_persistence",
+  "error_message": "Failed to DNS resolve address 9368276f.databases.neo4j.io:7687: [Errno 8] nodename nor servname provided, or not known",
+  "document_id": "pankajkumar.pdf",
+  "chunk_count": 3,
+  "relationship_count": 87,
+  "verification_report": null,
+  "output_path": "/Users/apple/project/documentInFo/tests/real_env_test/real_env_test_results/pankajkumar_20260422_101259.json"
+}

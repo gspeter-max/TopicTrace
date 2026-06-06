@@ -1,0 +1,78 @@
+services:
+  postgres: 
+    image: postgres:16
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: topictrace_db
+      POSTGRES_USER: topictrace
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data  # outside_container : inside_container
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U topictrace -d topictrace_db"]
+      interval: 30s
+      timeout: 10s 
+      retries: 3 
+  
+  topictrace:
+    build : .
+    container_name: topictrace_api
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    volumes:
+      - ./src:/app/src
+      - ./pyproject.toml:/app/pyproject.toml
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health/live"]
+      interval : 30s 
+      timeout : 10s 
+      retries : 3
+    depends_on:
+      postgres:
+        condition: service_healthy
+  
+  neo4j:
+    image: neo4j:5.26-community
+    container_name: neo4j
+    restart: unless-stopped
+
+    ports:
+      - "7474:7474"   # Neo4j Browser UI  → http://localhost:7474
+      - "7687:7687"   # Bolt protocol     → bolt://localhost:7687
+
+    environment:
+      # Auth format: <username>/<password>
+      # Reads NEO4J_USER and NEO4J_PASSWORD from project root .env
+      # Run with: docker compose --project-directory . -f dockerHostedServices/docker-compose.yml up -d
+      NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD}
+
+      # Allow connections from any host (required for local dev)
+      NEO4J_dbms_default__listen__address: "0.0.0.0"
+    
+      # Memory settings — tuned for local development
+      NEO4J_server_memory_heap_initial__size: "512m"
+      NEO4J_server_memory_heap_max__size: "1G"
+      NEO4J_server_memory_pagecache_size: "512m"
+
+      # Enable native vector index (required for db.index.vector.queryNodes)
+      NEO4J_dbms_security_procedures_unrestricted: "db.index.*"
+
+    volumes:
+      # Persistent storage — survives container restart
+      - ./neo4j/data:/data
+      - ./neo4j/logs:/logs
+
+    healthcheck:
+      test: ["CMD", "neo4j", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+        
+volumes:
+  pgdata:
