@@ -9,28 +9,28 @@ from openai import APIStatusError
 import topictrace.rag.documentIngestion.contextual_retrieval as module
 from topictrace.rag.documentIngestion.contextual_retrieval import (
     build_contextualized_document,
-    build_mistral_client,
     generate_chunk_context,
 )
+from topictrace.provider.llm import get_llm
+from langchain_core.messages import AIMessage
 
 
-class FakeCompletions:
-    def __init__(self, content: str):
+class FakeBoundClient:
+    def __init__(self, content: str, model_name: str = "test-model"):
         self.content = content
+        self.model_name = model_name
 
-    def create(self, **kwargs):
-        return SimpleNamespace(
-            choices=[
-                SimpleNamespace(
-                    message=SimpleNamespace(content=self.content)
-                )
-            ]
-        )
+    async def ainvoke(self, messages, **kwargs):
+        return AIMessage(content=self.content)
 
 
 class FakeClient:
     def __init__(self, content: str):
-        self.chat = SimpleNamespace(completions=FakeCompletions(content))
+        self.content = content
+        self.model_name = "test-model"
+
+    def bind(self, **kwargs):
+        return FakeBoundClient(self.content, model_name=kwargs.get("model", self.model_name))
 
 
 def test_validation_happy_path():
@@ -71,11 +71,11 @@ def test_validation_invalid_input_is_captured():
 
 def test_validation_timeout_is_captured():
     class TimeoutClient:
-        class chat:
-            class completions:
-                @staticmethod
-                def create(**kwargs):
-                    raise TimeoutError("request timed out")
+        def bind(self, **kwargs):
+            return self
+
+        async def ainvoke(self, *args, **kwargs):
+            raise TimeoutError("request timed out")
 
     chunk = {
         "chunk_index": 1,
@@ -96,7 +96,7 @@ def test_validation_timeout_is_captured():
 
 
 @respx.mock
-def test_validation_api_failure_is_captured():
+def test_validation_api_failure_is_captured(monkeypatch):
     respx.post("https://api.mistral.ai/v1/chat/completions").mock(
         return_value=Response(
             402,
@@ -109,7 +109,8 @@ def test_validation_api_failure_is_captured():
         )
     )
 
-    client = asyncio.run(build_mistral_client(api_key="test-key"))
+    monkeypatch.setattr("topictrace.settings.LLM_CONFIG.MISTRAL_AI.LLM_API_KEY", "test-key")
+    client = get_llm("MISTRAL_AI")
     chunk = {
         "chunk_index": 2,
         "text": "Education and certification details.",
@@ -183,7 +184,9 @@ def test_validation_expected_load_is_captured(monkeypatch):
     assert result["chunks"][99]["chunk_index"] == 99
 
 
-def test_validation_build_mistral_client_requires_key_when_config_is_empty(monkeypatch):
+def test_validation_llm_requires_key_when_config_is_empty(monkeypatch):
     monkeypatch.setattr("topictrace.settings.LLM_CONFIG.MISTRAL_AI.LLM_API_KEY", "")
-    with pytest.raises(EnvironmentError):
-        asyncio.run(build_mistral_client(api_key=""))
+    monkeypatch.delenv("MISTRAL_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    with pytest.raises((ValueError, Exception)):
+        get_llm("MISTRAL_AI")

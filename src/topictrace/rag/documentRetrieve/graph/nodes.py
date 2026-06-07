@@ -17,7 +17,7 @@ from topictrace import log, settings
 
 from topictrace.db.neo4j.cypherQuerys import retrieve_similar_chunks
 from topictrace.provider.embeddingModelProvider import embeddingModel
-from topictrace.provider.llm import build_mistral_client, DEFAULT_MODEL
+from topictrace.provider.llm import get_llm
 from topictrace.provider.voyageRerankProvider import rerank_documents
 
 from topictrace.rag.documentRetrieve.graph.state import RAGState
@@ -160,16 +160,13 @@ async def answer_node(state: RAGState) -> dict:
     prompt = build_final_answer_prompt(context_block)
 
     try:
-        llm = await build_mistral_client()
-        response = await llm.chat.completions.create(
-            model=DEFAULT_MODEL,
-            messages=[
-                {"role": "system", "content": prompt},
-                {"role": "user", "content": state["query"]},
-            ],
-            temperature=0.0,
-        )
-        answer = response.choices[0].message.content or "No answer generated."
+        llm = get_llm("MISTRAL_AI")
+        bound_llm = llm.bind(temperature=0.0)
+        response = await bound_llm.ainvoke([
+            {"role": "system", "content": prompt},
+            {"role": "user", "content": state["query"]},
+        ])
+        answer = response.content or "No answer generated."
     except Exception as e:
         log.error("Failed to generate final answer", error=str(e))
         answer = "Error generating answer from LLM."

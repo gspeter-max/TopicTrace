@@ -2,6 +2,7 @@ from topictrace.rag.documentIngestion.entityResolution import (
     group_entities_by_normalized_name,
     find_fuzzy_merge_candidates,
     split_clear_cases_from_ambiguous_cases,
+    build_entity_resolution_messages
 )
 
 
@@ -43,22 +44,29 @@ def test_split_clear_cases_from_ambiguous_cases_with_extreme_values():
     assert len(diff) == 1
     assert len(ambiguous) == 0
 
-from topictrace.rag.documentIngestion.entityResolution import build_entity_resolution_review_payload
-
-def test_build_entity_resolution_review_payload_only_contains_ambiguous_cases():
+def test_build_entity_resolution_message__only_contains_ambiguous_cases():
     """This test makes sure we only send the confusing pairs of names to the AI for review, and not the obvious ones."""
-    payload = build_entity_resolution_review_payload(
+    
+    message = build_entity_resolution_messages(
         ambiguous_pairs=[
             ("Elon", "Mr Musk", 0.72),
             ("Board", "Board of Directors", 0.69),
         ]
     )
 
-    assert len(payload["ambiguous_pairs"]) == 2
-    assert payload["ambiguous_pairs"][0]["left_name"] == "Elon"
+    assert message[0]["role"] == "system"
+    assert message[1]["role"] == "user"
+    assert "Elon" in message[1]["content"] 
 
 def test_build_entity_resolution_review_payload_handles_empty():
     """Edge case test: handle empty ambiguous pairs without crashing."""
-    payload = build_entity_resolution_review_payload([])
-    assert len(payload["ambiguous_pairs"]) == 0
+    import json 
+
+    message = build_entity_resolution_messages([])
+    user_content = message[1]["content"] 
+    json_start = user_content.find("{")
+    json_end = user_content.rfind("}")
+
+    json_content = json.loads(user_content[json_start:json_end + 1])
+    assert len(json_content["ambiguous_pairs"]) == 0
 

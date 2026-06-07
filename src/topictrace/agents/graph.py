@@ -4,14 +4,14 @@ from topictrace.agents.state import ResearchState
 from topictrace.tools import web_fetch, web_search
 from topictrace.provider.llm import get_llm_with_tools
 from topictrace.prompts.agent_system import get_system_prompt
-from langchain_core.messages import SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 
 
 tools = [web_fetch, web_search]
 llm_with_tools = get_llm_with_tools(tools)
 
 def agent_node(state : ResearchState):
-    messages = [SystemMessage(content = get_system_prompt())] + state['messages'] 
+    messages = [SystemMessage(content = get_system_prompt())] + HumanMessage(state['messages']) 
     response = llm_with_tools.invoke(messages)
     return {'messages': [response]} # because messages add to ResearchState.messages.append{.....}
 

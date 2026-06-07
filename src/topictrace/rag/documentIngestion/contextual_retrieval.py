@@ -13,11 +13,10 @@ from pathlib import Path
 from typing import Any
 
 import asyncio
-from openai import AsyncOpenAI
+from langchain_core.language_models import BaseChatModel
 from topictrace import settings
 from topictrace.rag.documentIngestion.chunking import chunk_document
 from topictrace.rag.documentIngestion.parseDocument import get_all_pages_text, parse_document
-from topictrace.provider.llm import build_mistral_client, DEFAULT_MODEL
 
 
 async def  build_context_messages(full_document_text: str, chunk: dict[str, Any]) -> list[dict[str, str]]:
@@ -47,37 +46,33 @@ async def  build_context_messages(full_document_text: str, chunk: dict[str, Any]
 
 async def generate_chunk_context(
     *,
-    client: AsyncOpenAI,
+    client: BaseChatModel,
     full_document_text: str,
     chunk: dict[str, Any],
-    model: str = DEFAULT_MODEL,
+    model: str | None = None,
     max_tokens: int = settings.CONTEXTUAL_RETRIEVAL_MAX_TOKENS,
 ) -> dict[str, Any]:
     messages = await build_context_messages(full_document_text, chunk)
-    response = client.chat.completions.create(
-        model=model,
-        messages=messages,
-        temperature=0.0,
-        max_tokens=max_tokens,
-    )
-    if inspect.isawaitable(response):
-        response = await response
-    message = response.choices[0].message
-    context = (message.content or "").strip()
+    bind_kwargs = {"max_tokens": max_tokens, "temperature": 0.0}
+    if model:
+        bind_kwargs["model"] = model
+    bound_client = client.bind(**bind_kwargs)
+    response = await bound_client.ainvoke(messages)
+    context = (response.content or "").strip()
     contextualized_text = f"{context}\n\n{chunk['text']}"
     return {
         **chunk,
         "context": context,
         "contextualized_text": contextualized_text,
-        "model": model,
+        "model": model or getattr(client, "model_name", "unknown"),
     }
 
 
 async def build_contextualized_document(
     *,
     file_path: str,
-    client: AsyncOpenAI,
-    model: str = DEFAULT_MODEL,
+    client: BaseChatModel,
+    model: str | None = None,
     max_concurrency = settings.CONTEXTUAL_RETRIEVAL_MAX_CONCURRENCY
 ) -> dict[str, Any]:
     parsed = parse_document(file_path)

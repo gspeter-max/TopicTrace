@@ -17,7 +17,7 @@ import structlog
 
 from topictrace import settings
 from topictrace.db.neo4j import Neo4jClient
-from topictrace.provider.llm import build_mistral_client
+from topictrace.provider.llm import get_llm
 from topictrace.rag.documentIngestion.contextual_retrieval import build_contextualized_document
 from topictrace.rag.documentIngestion.ingestion import (
     build_contextualized_chunk_embeddings,
@@ -145,7 +145,7 @@ async def run_pipeline_step_by_step(pdf_path: Path, output_dir: Path) -> Path:
     try:
         current_stage = "document_chunking"
         log.info("Starting document chunking")
-        client = await build_mistral_client()
+        client = get_llm("MISTRAL_AI")
         document_data = await build_contextualized_document(file_path=str(pdf_path), client=client)
         document_id = document_data["document_id"]
         chunk_list = document_data["chunks"]

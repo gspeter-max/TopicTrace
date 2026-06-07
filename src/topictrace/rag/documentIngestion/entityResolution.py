@@ -1,6 +1,6 @@
 import json
 from typing import Any
-from openai import AsyncOpenAI
+from langchain_core.language_models import BaseChatModel
 from rapidfuzz import fuzz
 
 from topictrace import settings
@@ -9,16 +9,18 @@ from topictrace.prompts.ingestion.prompts_for_checking_if_two_names_are_the_same
     SYSTEM_PROMPT,
     USER_PROMPT_TEMPLATE,
 )
-from topictrace.provider.llm import DEFAULT_MODEL
 
 
 
 def group_entities_by_normalized_name(raw_entity_names: list[str]) -> dict[str, list[str]]:
     """This function puts names that look exactly the same (except for capital letters or extra spaces) into groups, so we know they are the same thing."""
+    
     grouped_names: dict[str, list[str]] = {}
+
     for raw_entity_name in raw_entity_names:
         normalized_name = " ".join(raw_entity_name.lower().strip().split())
         grouped_names.setdefault(normalized_name, []).append(raw_entity_name)
+
     return grouped_names
 
 
@@ -27,7 +29,9 @@ def find_fuzzy_merge_candidates(
     threshold: int = settings.ENTITY_RESOLUTION_FUZZY_THRESHOLD,
 ) -> list[tuple[str, str]]:
     """This function finds pairs of names that look very similar, like "Apple" and "Apple Inc", and puts them together so we can check if they mean the same thing."""
+    
     fuzzy_merge_candidates: list[tuple[str, str]] = []
+    
     for left_index, left_name in enumerate(raw_entity_names):
         for right_name in raw_entity_names[left_index + 1:]:
             if fuzz.token_set_ratio(left_name, right_name) >= threshold:
@@ -56,9 +60,9 @@ def split_clear_cases_from_ambiguous_cases(
     return same_entity_pairs, ambiguous_pairs, different_entity_pairs
 
 
-def build_entity_resolution_review_payload(ambiguous_pairs: list[tuple[str, str, float]]) -> dict[str, Any]:
+def build_entity_resolution_messages(ambiguous_pairs: list[tuple[str, str, float]]) -> dict[str, Any]:
     """This makes sure we only send the confusing pairs of names to the AI for review."""
-    return {
+    payload =  {
         "ambiguous_pairs": [
             {
                 "left_name": pair[0],
@@ -68,10 +72,7 @@ def build_entity_resolution_review_payload(ambiguous_pairs: list[tuple[str, str,
             for pair in ambiguous_pairs
         ]
     }
- 
 
-def build_entity_resolution_messages(payload: dict[str, Any]) -> list[dict[str, str]]:
-    """This function gets the right files with instructions to ask the AI if two names are the same."""
     return [
         {
             "role": "system",
@@ -88,22 +89,21 @@ def build_entity_resolution_messages(payload: dict[str, Any]) -> list[dict[str, 
 
 async def resolve_ambiguous_entity_pairs(
     *,
-    llm_client: AsyncOpenAI,
+    llm_client: BaseChatModel,
     ambiguous_pairs: list[tuple[str, str, float]],
-    model: str = DEFAULT_MODEL,
+    model: str | None = None,
 ) -> list[EntityResolutionDecision]:
     """This function asks the AI to look at pairs of names we are confused about, and decide if they are the same thing or different things."""
     if not ambiguous_pairs:
         return []
         
-    payload = build_entity_resolution_review_payload(ambiguous_pairs)
-    response = await llm_client.chat.completions.create(
-        model=model,
-        messages=build_entity_resolution_messages(payload),
-        temperature=0.0,
-        response_format={"type": "json_object"},
-    )
-    response_payload = json.loads(response.choices[0].message.content or "{}")
+    bind_kwargs = {"temperature": 0.0, "response_format": {"type": "json_object"}}
+    if model:
+        bind_kwargs["model"] = model
+    bound_client = llm_client.bind(**bind_kwargs)
+    response = await bound_client.ainvoke(build_entity_resolution_messages(ambiguous_pairs))
+    response_payload = json.loads(response.content or "{}")
+    
     return [
         EntityResolutionDecision(**decision_row)
         for decision_row in response_payload.get("decisions", [])

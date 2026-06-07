@@ -9,7 +9,7 @@ import json
 from topictrace import log
 from pydantic import BaseModel, Field
 
-from topictrace.provider.llm import build_mistral_client, DEFAULT_MODEL
+from topictrace.provider.llm import get_llm
 from topictrace.prompts.grader_chunk_evaluator import GRADER_PROMPT
 
 
@@ -33,24 +33,20 @@ async def grade_chunks(query: str, chunks: list[str]) -> GraderResult:
         return GraderResult(sufficient=False, reason="No chunks provided.", answer="")
 
     try:
-        client = await build_mistral_client()
+        llm = get_llm("MISTRAL_AI")
+        bound_llm = llm.bind(response_format={"type": "json_object"}, temperature=0.0)
 
         # Combine chunks into a single text block
         chunks_text = "\n\n---\n\n".join(chunks)
 
         user_content = f"QUERY: {query}\n\nRETRIEVED DOCUMENTS:\n{chunks_text}"
 
-        response = await client.chat.completions.create(
-            model=DEFAULT_MODEL,
-            response_format={"type": "json_object"},
-            messages=[
-                {"role": "system", "content": GRADER_PROMPT},
-                {"role": "user", "content": user_content},
-            ],
-            temperature=0.0,
-        )
+        response = await bound_llm.ainvoke([
+            {"role": "system", "content": GRADER_PROMPT},
+            {"role": "user", "content": user_content},
+        ])
 
-        content = response.choices[0].message.content
+        content = response.content
         if not content:
             log.warning("Grader received empty response from LLM, defaulting to insufficient")
             return GraderResult(sufficient=False, reason="Empty LLM response.", answer="")

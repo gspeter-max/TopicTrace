@@ -1,6 +1,6 @@
 import json
 from typing import Any
-from openai import AsyncOpenAI
+from langchain_core.language_models import BaseChatModel
 
 from topictrace.rag.documentIngestion.graphRelationshipSchema import get_relationship_schema_prompt_text
 from topictrace.rag.documentIngestion.models.graphExtractionModels import ChunkGraphExtractionResult
@@ -8,7 +8,6 @@ from topictrace.prompts.ingestion.prompts_for_extracting_graph_data import (
     SYSTEM_PROMPT,
     USER_PROMPT_TEMPLATE,
 )
-from topictrace.provider.llm import DEFAULT_MODEL
 
 
 
@@ -38,19 +37,18 @@ def build_graph_extraction_messages(chunk: dict[str, Any]) -> list[dict[str, str
 
 async def extract_graph_data_from_chunk(
     *,
-    llm_client: AsyncOpenAI,
+    llm_client: BaseChatModel,
     chunk: dict[str, Any],
-    model: str = DEFAULT_MODEL,
+    model: str | None = None,
 ) -> ChunkGraphExtractionResult:
     """This function looks at a small piece of the text and asks the AI to find all the important names 
     (like people or places) and how they connect to each other, like drawing lines between dots."""
-    response = await llm_client.chat.completions.create(
-        model=model,
-        messages=build_graph_extraction_messages(chunk),
-        temperature=0.0,
-        response_format={"type": "json_object"},
-    )
-    response_payload = json.loads(response.choices[0].message.content or "{}")
+    bind_kwargs = {"temperature": 0.0, "response_format": {"type": "json_object"}}
+    if model:
+        bind_kwargs["model"] = model
+    bound_client = llm_client.bind(**bind_kwargs)
+    response = await bound_client.ainvoke(build_graph_extraction_messages(chunk))
+    response_payload = json.loads(response.content or "{}")
     return parse_chunk_graph_extraction_response(response_payload)
 
 

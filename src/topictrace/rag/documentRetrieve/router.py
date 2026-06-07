@@ -10,7 +10,7 @@ import json
 from topictrace import log
 from typing import Literal
 
-from topictrace.provider.llm import build_mistral_client, DEFAULT_MODEL
+from topictrace.provider.llm import get_llm
 from topictrace.prompts.router_intent_classifier import ROUTER_PROMPT
 
 
@@ -33,19 +33,15 @@ async def classify_intent(query: str) -> IntentType:
         "simple" or "complex". Defaults to "simple" if parsing fails or LLM gives unexpected output.
     """
     try:
-        client = await build_mistral_client()
+        llm = get_llm("MISTRAL_AI")
+        bound_llm = llm.bind(response_format={"type": "json_object"}, temperature=0.0)
 
-        response = await client.chat.completions.create(
-            model=DEFAULT_MODEL,
-            response_format={"type": "json_object"},
-            messages=[
-                {"role": "system", "content": ROUTER_PROMPT},
-                {"role": "user", "content": query},
-            ],
-            temperature=0.0,
-        )
+        response = await bound_llm.ainvoke([
+            {"role": "system", "content": ROUTER_PROMPT},
+            {"role": "user", "content": query},
+        ])
 
-        content = response.choices[0].message.content
+        content = response.content
         if not content:
             log.error("Router received empty response from LLM, defaulting to 'simple'")
             return "simple"

@@ -2,7 +2,7 @@ import asyncio
 from typing import Any
 
 from topictrace.rag.documentIngestion.contextual_retrieval import build_contextualized_document
-from topictrace.provider.llm import build_mistral_client
+from topictrace.provider.llm import get_llm
 from topictrace.provider.embeddingModelProvider import embeddingModel
 from topictrace.db.neo4j import Neo4jClient
 from topictrace.db.neo4j.cypherQuerys import (
@@ -53,7 +53,7 @@ async def build_contextualized_chunk_embeddings(chunks: list[dict[str, Any]]) ->
     return await embedding_model.generate_embeddings_for_text_list(texts)
 
 
-async def extract_chunk_graph_data_in_parallel(chunks: list[dict[str, Any]]) -> list[Any]:
+async def extract_chunk_graph_data_in_parallel(chunks: list[dict[str, Any]], provider: str = "MISTRAL_AI") -> list[Any]:
     """
     Runs the LLM-based graph extraction over every chunk in parallel.
 
@@ -63,19 +63,20 @@ async def extract_chunk_graph_data_in_parallel(chunks: list[dict[str, Any]]) -> 
 
     Args:
         chunks: List of contextualized chunk dicts.
+        provider: Name of the LLM provider to use.
 
     Returns:
         List of ChunkGraphExtractionResult objects — one per chunk — each
         containing raw .entities and .relationships found by the LLM.
     """
-    client = await build_mistral_client()
+    client = get_llm(provider)
     return await asyncio.gather(*[
         extract_graph_data_from_chunk(llm_client=client, chunk=chunk)
         for chunk in chunks
     ])
 
 
-async def resolve_entities_for_graph(raw_chunk_graph_results: list[Any]) -> dict[str, Any]:
+async def resolve_entities_for_graph(raw_chunk_graph_results: list[Any], provider: str = "MISTRAL_AI") -> dict[str, Any]:
     """
     Resolves raw entity names into a single canonical name per real-world entity.
 
@@ -96,6 +97,7 @@ async def resolve_entities_for_graph(raw_chunk_graph_results: list[Any]) -> dict
     Args:
         raw_chunk_graph_results: List of ChunkGraphExtractionResult objects
                                  returned by extract_chunk_graph_data_in_parallel.
+        provider: Name of the LLM provider to use.
 
     Returns:
         A dict with key "canonical_name_by_raw_name": a flat map of
@@ -131,7 +133,7 @@ async def resolve_entities_for_graph(raw_chunk_graph_results: list[Any]) -> dict
     for l, r, _ in same_pairs:
         canonical_map[r] = canonical_map.get(l, l)
 
-    client = await build_mistral_client()
+    client = get_llm(provider)
     decisions = await resolve_ambiguous_entity_pairs(llm_client=client, ambiguous_pairs=ambiguous_pairs)
     
     for decision in decisions:
@@ -230,7 +232,7 @@ def build_ingestion_summary_response(contextualized_document: dict[str, Any], ca
     }
 
 
-async def ingest_document_graph(file_path: str) -> dict[str, int | str]:
+async def ingest_document_graph(file_path: str, provider: str = "MISTRAL_AI") -> dict[str, int | str]:
     """
     Orchestrates the full document-to-knowledge-graph pipeline.
 
@@ -244,22 +246,24 @@ async def ingest_document_graph(file_path: str) -> dict[str, int | str]:
 
     Args:
         file_path: Absolute path to the document file to ingest.
+        provider: LLM provider name ('MISTRAL_AI' or 'DEEPSEEK_AI').
 
     Returns:
         A summary dict with ingestion stats (entity counts, relationship count).
     """
     log.info("Starting document ingestion pipeline", file_path=file_path)
     
-    doc = await build_contextualized_document(file_path=file_path, client=await build_mistral_client())
+    llm = get_llm(provider)
+    doc = await build_contextualized_document(file_path=file_path, client=llm)
     log.info("Document parsed and chunked", num_chunks=len(doc["chunks"]), document_id=doc["document_id"])
     
     embeddings = await build_contextualized_chunk_embeddings(doc["chunks"])
     log.info("Embeddings generated for chunks", num_embeddings=len(embeddings))
     
-    raw_results = await extract_chunk_graph_data_in_parallel(doc["chunks"])
+    raw_results = await extract_chunk_graph_data_in_parallel(doc["chunks"], provider=provider)
     log.info("Graph data extracted from chunks via LLM", num_results=len(raw_results))
     
-    resolution_result = await resolve_entities_for_graph(raw_results)
+    resolution_result = await resolve_entities_for_graph(raw_results, provider=provider)
     log.info("Entity resolution complete", num_canonical_names=len(resolution_result["canonical_name_by_raw_name"]))
     
     canonical_payload = rewrite_graph_results_to_canonical_entities(

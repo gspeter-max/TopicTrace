@@ -14,6 +14,7 @@ Functions being tested now live in documentRetrieve.graph.nodes
 """
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
+from langchain_core.messages import AIMessage
 
 from topictrace.rag.documentRetrieve.graph.nodes import answer_node, _extract_entity_ids
 from topictrace.server.schemas.rag.retrieveModels import QueryRequest
@@ -21,12 +22,8 @@ from topictrace.server.schemas.rag.retrieveModels import QueryRequest
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _make_llm_response(content: str) -> MagicMock:
-    choice = MagicMock()
-    choice.message.content = content
-    response = MagicMock()
-    response.choices = [choice]
-    return response
+def _make_llm_response(content: str):
+    return AIMessage(content=content)
 
 
 class MockGraderResult:
@@ -86,15 +83,17 @@ async def test_answer_node_injects_context_into_prompt():
     }
     llm_resp = _make_llm_response("The answer.")
 
-    with patch("topictrace.rag.documentRetrieve.graph.nodes.build_mistral_client") as mock_builder, \
+    mock_llm = MagicMock()
+    mock_bound_llm = MagicMock()
+    mock_bound_llm.ainvoke = AsyncMock(return_value=llm_resp)
+    mock_llm.bind.return_value = mock_bound_llm
+
+    with patch("topictrace.rag.documentRetrieve.graph.nodes.get_llm", return_value=mock_llm) as mock_get_llm, \
          patch("topictrace.rag.documentRetrieve.graph.nodes.build_final_answer_prompt", side_effect=lambda ctx: f"PROMPT:{ctx}") as mock_prompt:
-        mock_client = AsyncMock()
-        mock_client.chat.completions.create = AsyncMock(return_value=llm_resp)
-        mock_builder.return_value = mock_client
 
         await answer_node(state)
 
-        messages = mock_client.chat.completions.create.call_args[1]["messages"]
+        messages = mock_bound_llm.ainvoke.call_args[0][0]
         system_msg = next(m["content"] for m in messages if m["role"] == "system")
 
     assert "UNIQUE_CONTEXT_BLOCK_12345" in system_msg
@@ -110,14 +109,15 @@ async def test_answer_node_sends_query_as_user_message():
     }
     llm_resp = _make_llm_response("An answer.")
 
-    with patch("topictrace.rag.documentRetrieve.graph.nodes.build_mistral_client") as mock_builder:
-        mock_client = AsyncMock()
-        mock_client.chat.completions.create = AsyncMock(return_value=llm_resp)
-        mock_builder.return_value = mock_client
+    mock_llm = MagicMock()
+    mock_bound_llm = MagicMock()
+    mock_bound_llm.ainvoke = AsyncMock(return_value=llm_resp)
+    mock_llm.bind.return_value = mock_bound_llm
 
+    with patch("topictrace.rag.documentRetrieve.graph.nodes.get_llm", return_value=mock_llm):
         await answer_node(state)
 
-        messages = mock_client.chat.completions.create.call_args[1]["messages"]
+        messages = mock_bound_llm.ainvoke.call_args[0][0]
         user_msg = next(m["content"] for m in messages if m["role"] == "user")
 
     assert "MY_SPECIFIC_QUERY" in user_msg
@@ -133,14 +133,15 @@ async def test_answer_node_calls_llm_exactly_once():
     }
     llm_resp = _make_llm_response("Answer.")
 
-    with patch("topictrace.rag.documentRetrieve.graph.nodes.build_mistral_client") as mock_builder:
-        mock_client = AsyncMock()
-        mock_client.chat.completions.create = AsyncMock(return_value=llm_resp)
-        mock_builder.return_value = mock_client
+    mock_llm = MagicMock()
+    mock_bound_llm = MagicMock()
+    mock_bound_llm.ainvoke = AsyncMock(return_value=llm_resp)
+    mock_llm.bind.return_value = mock_bound_llm
 
+    with patch("topictrace.rag.documentRetrieve.graph.nodes.get_llm", return_value=mock_llm):
         await answer_node(state)
 
-        assert mock_client.chat.completions.create.call_count == 1
+        assert mock_bound_llm.ainvoke.call_count == 1
 
 
 @pytest.mark.anyio
@@ -148,9 +149,9 @@ async def test_answer_node_returns_fallback_on_empty_context():
     """If final_context is empty and not sufficient, must return fallback — never call LLM."""
     state = {"query": "q", "grade_sufficient": False, "final_context": []}
 
-    with patch("topictrace.rag.documentRetrieve.graph.nodes.build_mistral_client") as mock_builder:
+    with patch("topictrace.rag.documentRetrieve.graph.nodes.get_llm") as mock_get_llm:
         result = await answer_node(state)
-        mock_builder.assert_not_called()
+        mock_get_llm.assert_not_called()
 
     assert isinstance(result["answer"], str)
     assert len(result["answer"]) > 0
@@ -164,11 +165,12 @@ async def test_answer_node_returns_fallback_on_llm_exception():
         "grade_sufficient": False,
         "final_context": ["context"],
     }
-    with patch("topictrace.rag.documentRetrieve.graph.nodes.build_mistral_client") as mock_builder:
-        mock_client = AsyncMock()
-        mock_client.chat.completions.create = AsyncMock(side_effect=RuntimeError("LLM is down"))
-        mock_builder.return_value = mock_client
+    mock_llm = MagicMock()
+    mock_bound_llm = MagicMock()
+    mock_bound_llm.ainvoke = AsyncMock(side_effect=RuntimeError("LLM is down"))
+    mock_llm.bind.return_value = mock_bound_llm
 
+    with patch("topictrace.rag.documentRetrieve.graph.nodes.get_llm", return_value=mock_llm):
         result = await answer_node(state)
 
     assert isinstance(result["answer"], str)

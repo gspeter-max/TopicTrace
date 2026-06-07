@@ -8,11 +8,11 @@ from topictrace import settings
 from topictrace.rag.documentIngestion.contextual_retrieval import (
     generate_chunk_context,
 )
-from topictrace.provider.llm import build_mistral_client, build_deepseek_client
+from topictrace.provider.llm import get_llm
 
 
 @respx.mock
-def test_generate_chunk_context_with_realistic_openai_shape():
+def test_generate_chunk_context_with_realistic_openai_shape(monkeypatch):
     route = respx.post("https://api.mistral.ai/v1/chat/completions").mock(
         return_value=Response(
             200,
@@ -35,7 +35,8 @@ def test_generate_chunk_context_with_realistic_openai_shape():
         )
     )
 
-    client = asyncio.run(build_mistral_client(api_key="test-key"))
+    monkeypatch.setattr("topictrace.settings.LLM_CONFIG.MISTRAL_AI.LLM_API_KEY", "test-key")
+    client = get_llm("MISTRAL_AI")
     chunk = {
         "chunk_index": 0,
         "text": "Built search pipelines.",
@@ -63,7 +64,7 @@ def test_real_mistral_smoke():
     if not api_key or api_key.lower() in {"test", "test-key", "dummy", "placeholder", "missing_key", "mistral_api_key"}:
         pytest.skip("MISTRAL_API_KEY is not configured with a real value in settings")
 
-    client = asyncio.run(build_mistral_client())
+    client = get_llm("MISTRAL_AI")
 
     chunk = {
         "chunk_index": 0,
@@ -91,7 +92,7 @@ def test_real_mistral_smoke():
 
 
 @respx.mock
-def test_generate_chunk_context_with_realistic_deepseek_shape():
+def test_generate_chunk_context_with_realistic_deepseek_shape(monkeypatch):
     route = respx.post("https://integrate.api.nvidia.com/v1/chat/completions").mock(
         return_value=Response(
             200,
@@ -114,7 +115,8 @@ def test_generate_chunk_context_with_realistic_deepseek_shape():
         )
     )
 
-    client = asyncio.run(build_deepseek_client(api_key="test-key"))
+    monkeypatch.setattr("topictrace.settings.LLM_CONFIG.DEEPSEEK_AI.LLM_API_KEY", "test-key")
+    client = get_llm("DEEPSEEK_AI")
     chunk = {
         "chunk_index": 0,
         "text": "Built search pipelines.",
@@ -142,7 +144,7 @@ def test_real_deepseek_smoke():
     if not api_key or api_key.lower() in {"test", "test-key", "dummy", "placeholder", "missing_key", "llm_api_key"}:
         pytest.skip("DEEPSEEK_AI API key is not configured with a real value in settings")
 
-    client = asyncio.run(build_deepseek_client())
+    client = get_llm("DEEPSEEK_AI")
 
     chunk = {
         "chunk_index": 0,

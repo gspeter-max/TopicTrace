@@ -11,6 +11,7 @@ that can be unit-tested without running the full graph.
 """
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
+from langchain_core.messages import AIMessage
 
 from topictrace.rag.documentRetrieve.graph.state import RAGState
 from topictrace.rag.documentRetrieve.graph.nodes import (
@@ -239,7 +240,7 @@ async def test_answer_node_fast_path_uses_grade_answer():
         "vector_texts": ["chunk"],
         "final_context": [],
     }
-    with patch("topictrace.rag.documentRetrieve.graph.nodes.build_mistral_client") as mock_llm:
+    with patch("topictrace.rag.documentRetrieve.graph.nodes.get_llm") as mock_llm:
         result = await answer_node(state)
         mock_llm.assert_not_called()
 
@@ -254,11 +255,13 @@ async def test_answer_node_standard_path_calls_llm():
         "grade_sufficient": False,
         "final_context": ["chunk1", "chunk2"],
     }
-    mock_llm_client = AsyncMock()
-    mock_llm_client.chat.completions.create.return_value.choices = [
-        MagicMock(message=MagicMock(content="LLM Answer"))
-    ]
-    with patch("topictrace.rag.documentRetrieve.graph.nodes.build_mistral_client", AsyncMock(return_value=mock_llm_client)), \
+    mock_resp = AIMessage(content="LLM Answer")
+    mock_llm = MagicMock()
+    mock_bound_llm = MagicMock()
+    mock_bound_llm.ainvoke = AsyncMock(return_value=mock_resp)
+    mock_llm.bind.return_value = mock_bound_llm
+
+    with patch("topictrace.rag.documentRetrieve.graph.nodes.get_llm", return_value=mock_llm), \
          patch("topictrace.rag.documentRetrieve.graph.nodes.build_final_answer_prompt", return_value="prompt"):
         result = await answer_node(state)
 
