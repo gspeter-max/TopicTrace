@@ -1,8 +1,8 @@
 """
-Tests for src.documentIngestion.chunking.recursive.
+Tests for topictrace.rag.documentIngestion.chunking.recursive.
 """
 
-from src.documentIngestion.chunking import chunk_document, count_tokens
+from topictrace.rag.documentIngestion.chunking import chunk_document, count_tokens
 
 
 SIMPLE_TEXT = "Hello world. " * 100

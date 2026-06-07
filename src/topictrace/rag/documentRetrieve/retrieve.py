@@ -7,15 +7,18 @@ the final state back to QueryResponse.
 
 All pipeline logic lives in documentRetrieve/graph/.
 """
-import structlog
 
-from config import neo4j_uri, neo4j_user, neo4j_password
-from db.neo4j import Neo4jClient
 
-from app.models.retrieveModels import QueryRequest, QueryResponse
-from documentRetrieve.graph.build_graph import build_rag_graph
+from topictrace import log, settings
+from topictrace.db.neo4j import Neo4jClient
 
-log = structlog.get_logger()
+
+from topictrace.server.schemas.rag.retrieveModels import QueryRequest, QueryResponse
+
+from topictrace.rag.documentRetrieve.graph.build_graph import build_rag_graph
+
+
+
 
 # Build the graph once at module load — it is stateless and reusable
 _rag_graph = build_rag_graph()
@@ -28,7 +31,11 @@ async def handle_query(request: QueryRequest) -> QueryResponse:
     Creates the Neo4j client, invokes the LangGraph state machine,
     then closes the client regardless of success or failure.
     """
-    client = Neo4jClient(neo4j_uri, neo4j_user, neo4j_password)
+    client = Neo4jClient(
+        settings.DATABASE_CONFIG.NEO4J.NEO4J_URI,
+        settings.DATABASE_CONFIG.NEO4J.NEO4J_USER,
+        settings.DATABASE_CONFIG.NEO4J.NEO4J_PASSWORD,
+    )
 
     try:
         final_state = await _rag_graph.ainvoke(

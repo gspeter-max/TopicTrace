@@ -1,8 +1,8 @@
-from src.documentIngestion.prompts.graph.prompts_for_extracting_graph_data import (
+from topictrace.prompts.ingestion.prompts_for_extracting_graph_data import (
     SYSTEM_PROMPT as EXTRACTION_SYSTEM,
     USER_PROMPT_TEMPLATE as EXTRACTION_USER
 )
-from src.documentIngestion.prompts.graph.prompts_for_checking_if_two_names_are_the_same import (
+from topictrace.prompts.ingestion.prompts_for_checking_if_two_names_are_the_same import (
     SYSTEM_PROMPT as RESOLUTION_SYSTEM
 )
 

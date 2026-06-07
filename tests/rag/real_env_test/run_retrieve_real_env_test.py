@@ -18,8 +18,9 @@ import structlog
 # Add src to path if not running with PYTHONPATH
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../src'))
 
-from app.models.retrieveModels import QueryRequest
-from documentRetrieve.retrieve import handle_query
+from topictrace.server.schemas.rag.retrieveModels import QueryRequest
+from topictrace.rag.documentRetrieve.retrieve import handle_query
+
 
 
 # Configure structured logging for the test output

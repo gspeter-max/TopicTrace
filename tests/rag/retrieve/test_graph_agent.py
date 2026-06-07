@@ -5,7 +5,8 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from documentRetrieve.graphAgent import gather_graph_facts
+from topictrace.rag.documentRetrieve.graphAgent import gather_graph_facts
+
 
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
@@ -27,7 +28,7 @@ async def test_graph_agent_uses_1hop_when_successful():
         {"source": "Alice", "rel_type": "KNOWS", "target": "Bob", "evidence_text": "Alice knows Bob."}
     ]
 
-    with patch("documentRetrieve.graphAgent.fetch_entity_neighbors_1hop", return_value=mock_1hop_data) as mock_1hop:
+    with patch("topictrace.rag.documentRetrieve.graphAgent.fetch_entity_neighbors_1hop", return_value=mock_1hop_data) as mock_1hop:
         result = await gather_graph_facts(mock_client, ["Alice"])
 
     mock_1hop.assert_called_once_with(mock_client, ["Alice"])
@@ -41,7 +42,7 @@ async def test_graph_agent_returns_empty_if_1hop_empty():
     """If 1-hop returns empty, it returns an empty string."""
     mock_client = AsyncMock()
 
-    with patch("documentRetrieve.graphAgent.fetch_entity_neighbors_1hop", return_value=[]) as mock_1hop:
+    with patch("topictrace.rag.documentRetrieve.graphAgent.fetch_entity_neighbors_1hop", return_value=[]) as mock_1hop:
         result = await gather_graph_facts(mock_client, ["Alice"])
 
     mock_1hop.assert_called_once()

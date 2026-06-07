@@ -6,12 +6,13 @@ Uses a 1-hop traversal first. If no connections are found, it expands to 2-hop.
 Formats the gathered relationships into a readable fact sheet for the LLM.
 """
 from typing import Any
-import structlog
+from topictrace import log
 
-from db.neo4j import Neo4jClient
-from db.neo4j.cypherQuerys import fetch_entity_neighbors_1hop
+from topictrace.db.neo4j import Neo4jClient
+from topictrace.db.neo4j.cypherQuerys import fetch_entity_neighbors_1hop
 
-log = structlog.get_logger()
+
+
 
 
 def _rows_to_fact_sheet(rows: list[dict[str, Any]]) -> str:

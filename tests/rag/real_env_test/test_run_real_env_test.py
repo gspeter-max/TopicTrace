@@ -1,7 +1,7 @@
 import asyncio
 import json
 
-from tests.real_env_test.run_real_env_test import run_pipeline_step_by_step
+from tests.rag.real_env_test.run_real_env_test import run_pipeline_step_by_step
 
 
 def test_smoke_runner_writes_partial_report_when_graph_extraction_fails(monkeypatch, tmp_path):
@@ -29,10 +29,10 @@ def test_smoke_runner_writes_partial_report_when_graph_extraction_fails(monkeypa
     async def fake_extract_chunk_graph_data_in_parallel(*args, **kwargs):
         raise ValueError("unsupported relationship type: SENDS_TO")
 
-    monkeypatch.setattr("tests.real_env_test.run_real_env_test.build_mistral_client", fake_build_mistral_client)
-    monkeypatch.setattr("tests.real_env_test.run_real_env_test.build_contextualized_document", fake_build_contextualized_document)
-    monkeypatch.setattr("tests.real_env_test.run_real_env_test.build_contextualized_chunk_embeddings", fake_build_contextualized_chunk_embeddings)
-    monkeypatch.setattr("tests.real_env_test.run_real_env_test.extract_chunk_graph_data_in_parallel", fake_extract_chunk_graph_data_in_parallel)
+    monkeypatch.setattr("tests.rag.real_env_test.run_real_env_test.build_mistral_client", fake_build_mistral_client)
+    monkeypatch.setattr("tests.rag.real_env_test.run_real_env_test.build_contextualized_document", fake_build_contextualized_document)
+    monkeypatch.setattr("tests.rag.real_env_test.run_real_env_test.build_contextualized_chunk_embeddings", fake_build_contextualized_chunk_embeddings)
+    monkeypatch.setattr("tests.rag.real_env_test.run_real_env_test.extract_chunk_graph_data_in_parallel", fake_extract_chunk_graph_data_in_parallel)
 
     report_path = asyncio.run(run_pipeline_step_by_step(tmp_path / "resume.pdf", tmp_path))
     report = json.loads(report_path.read_text(encoding="utf-8"))

@@ -1,5 +1,5 @@
-from src.documentIngestion.graphPersistence import rewrite_graph_results_to_canonical_entities
-from src.documentIngestion.models.graphExtractionModels import ChunkGraphExtractionResult, RawGraphEntity, RawGraphRelationship
+from topictrace.rag.documentIngestion.graphPersistence import rewrite_graph_results_to_canonical_entities
+from topictrace.rag.documentIngestion.models.graphExtractionModels import ChunkGraphExtractionResult, RawGraphEntity, RawGraphRelationship
 
 
 def test_rewrite_graph_results_to_canonical_entities_updates_relationship_endpoints():
@@ -33,7 +33,7 @@ def test_rewrite_graph_results_to_canonical_entities_handles_missing_mappings():
 
 def test_build_neo4j_graph_write_payload_contains_mentions_and_relationships():
     """This test makes sure that the package of data we send to the database contains all the names, where they were mentioned, and how they connect."""
-    from src.documentIngestion.graphPersistence import build_neo4j_graph_write_payload
+    from topictrace.rag.documentIngestion.graphPersistence import build_neo4j_graph_write_payload
     payload = build_neo4j_graph_write_payload(
         document_id="resume.pdf",
         canonical_entities=[{"canonical_name": "Elon Musk", "entity_type": "Person", "chunk_id": "doc::0", "evidence_text": "Elon spoke"}],
@@ -46,7 +46,7 @@ def test_build_neo4j_graph_write_payload_contains_mentions_and_relationships():
 
 def test_build_neo4j_graph_write_payload_deduplicates_entities():
     """Edge case: ensure entities are deduplicated by canonical name in the payload."""
-    from src.documentIngestion.graphPersistence import build_neo4j_graph_write_payload
+    from topictrace.rag.documentIngestion.graphPersistence import build_neo4j_graph_write_payload
     payload = build_neo4j_graph_write_payload(
         document_id="doc.pdf",
         canonical_entities=[

@@ -15,8 +15,8 @@ Functions being tested now live in documentRetrieve.graph.nodes
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 
-from documentRetrieve.graph.nodes import answer_node, _extract_entity_ids
-from app.models.retrieveModels import QueryRequest
+from topictrace.rag.documentRetrieve.graph.nodes import answer_node, _extract_entity_ids
+from topictrace.server.schemas.rag.retrieveModels import QueryRequest
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -86,8 +86,8 @@ async def test_answer_node_injects_context_into_prompt():
     }
     llm_resp = _make_llm_response("The answer.")
 
-    with patch("documentRetrieve.graph.nodes.build_mistral_client") as mock_builder, \
-         patch("documentRetrieve.graph.nodes.build_final_answer_prompt", side_effect=lambda ctx: f"PROMPT:{ctx}") as mock_prompt:
+    with patch("topictrace.rag.documentRetrieve.graph.nodes.build_mistral_client") as mock_builder, \
+         patch("topictrace.rag.documentRetrieve.graph.nodes.build_final_answer_prompt", side_effect=lambda ctx: f"PROMPT:{ctx}") as mock_prompt:
         mock_client = AsyncMock()
         mock_client.chat.completions.create = AsyncMock(return_value=llm_resp)
         mock_builder.return_value = mock_client
@@ -110,7 +110,7 @@ async def test_answer_node_sends_query_as_user_message():
     }
     llm_resp = _make_llm_response("An answer.")
 
-    with patch("documentRetrieve.graph.nodes.build_mistral_client") as mock_builder:
+    with patch("topictrace.rag.documentRetrieve.graph.nodes.build_mistral_client") as mock_builder:
         mock_client = AsyncMock()
         mock_client.chat.completions.create = AsyncMock(return_value=llm_resp)
         mock_builder.return_value = mock_client
@@ -133,7 +133,7 @@ async def test_answer_node_calls_llm_exactly_once():
     }
     llm_resp = _make_llm_response("Answer.")
 
-    with patch("documentRetrieve.graph.nodes.build_mistral_client") as mock_builder:
+    with patch("topictrace.rag.documentRetrieve.graph.nodes.build_mistral_client") as mock_builder:
         mock_client = AsyncMock()
         mock_client.chat.completions.create = AsyncMock(return_value=llm_resp)
         mock_builder.return_value = mock_client
@@ -148,7 +148,7 @@ async def test_answer_node_returns_fallback_on_empty_context():
     """If final_context is empty and not sufficient, must return fallback — never call LLM."""
     state = {"query": "q", "grade_sufficient": False, "final_context": []}
 
-    with patch("documentRetrieve.graph.nodes.build_mistral_client") as mock_builder:
+    with patch("topictrace.rag.documentRetrieve.graph.nodes.build_mistral_client") as mock_builder:
         result = await answer_node(state)
         mock_builder.assert_not_called()
 
@@ -164,7 +164,7 @@ async def test_answer_node_returns_fallback_on_llm_exception():
         "grade_sufficient": False,
         "final_context": ["context"],
     }
-    with patch("documentRetrieve.graph.nodes.build_mistral_client") as mock_builder:
+    with patch("topictrace.rag.documentRetrieve.graph.nodes.build_mistral_client") as mock_builder:
         mock_client = AsyncMock()
         mock_client.chat.completions.create = AsyncMock(side_effect=RuntimeError("LLM is down"))
         mock_builder.return_value = mock_client
@@ -191,11 +191,11 @@ async def test_pipeline_skips_final_llm_call_when_grader_is_sufficient():
     mock_graph = MagicMock()
     mock_graph.ainvoke = AsyncMock(return_value=final_state)
 
-    with patch("documentRetrieve.retrieve._rag_graph", mock_graph), \
-         patch("documentRetrieve.retrieve.Neo4jClient") as mock_neo4j:
+    with patch("topictrace.rag.documentRetrieve.retrieve._rag_graph", mock_graph), \
+         patch("topictrace.rag.documentRetrieve.retrieve.Neo4jClient") as mock_neo4j:
         mock_neo4j.return_value.close = AsyncMock()
 
-        from documentRetrieve.retrieve import handle_query
+        from topictrace.rag.documentRetrieve.retrieve import handle_query
         req = QueryRequest(query="simple question", top_k=5, top_k_rerank=3)
         res = await handle_query(req)
 
@@ -217,11 +217,11 @@ async def test_pipeline_response_fields_correct_on_fast_path():
     mock_graph = MagicMock()
     mock_graph.ainvoke = AsyncMock(return_value=final_state)
 
-    with patch("documentRetrieve.retrieve._rag_graph", mock_graph), \
-         patch("documentRetrieve.retrieve.Neo4jClient") as mock_neo4j:
+    with patch("topictrace.rag.documentRetrieve.retrieve._rag_graph", mock_graph), \
+         patch("topictrace.rag.documentRetrieve.retrieve.Neo4jClient") as mock_neo4j:
         mock_neo4j.return_value.close = AsyncMock()
 
-        from documentRetrieve.retrieve import handle_query
+        from topictrace.rag.documentRetrieve.retrieve import handle_query
         res = await handle_query(QueryRequest(query="q", top_k=5, top_k_rerank=3))
 
     assert res.used_graph_search is False

@@ -1,4 +1,4 @@
-from db.neo4j import Neo4jClient
+from topictrace.db.neo4j import Neo4jClient
 from typing import Any
 
 

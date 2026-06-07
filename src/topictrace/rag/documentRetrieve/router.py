@@ -7,13 +7,14 @@ No keywords or regex, pure LLM routing.
 Defaults to "simple" on failure.
 """
 import json
-import structlog
+from topictrace import log
 from typing import Literal
 
-from providers.llmProvider import build_mistral_client, DEFAULT_MODEL
-from documentRetrieve.prompts.router_intent_classifier import ROUTER_PROMPT
+from topictrace.provider.llm import build_mistral_client, DEFAULT_MODEL
+from topictrace.prompts.router_intent_classifier import ROUTER_PROMPT
 
-log = structlog.get_logger()
+
+
 
 IntentType = Literal["simple", "complex"]
 

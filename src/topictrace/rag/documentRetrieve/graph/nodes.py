@@ -10,24 +10,26 @@ The Neo4j client is passed via config["configurable"]["neo4j_client"] so it
 is created ONCE in handle_query and closed there in a finally block.
 Business logic (classify_intent, grade_chunks, etc.) is unchanged.
 """
-import structlog
+
 from langchain_core.runnables import RunnableConfig
 
-from config import jina_api_key
-from db.neo4j.cypherQuerys import retrieve_similar_chunks
-from providers.embeddingModelProvider import embeddingModel
-from providers.llmProvider import build_mistral_client, DEFAULT_MODEL
-from providers.voyageRerankProvider import rerank_documents
+from topictrace import log, settings
 
-from documentRetrieve.graph.state import RAGState
-from documentRetrieve.router import classify_intent
-from documentRetrieve.grader import grade_chunks
-from documentRetrieve.graphAgent import gather_graph_facts
-from documentRetrieve.prompts.answer_generator import build_final_answer_prompt
+from topictrace.db.neo4j.cypherQuerys import retrieve_similar_chunks
+from topictrace.provider.embeddingModelProvider import embeddingModel
+from topictrace.provider.llm import build_mistral_client, DEFAULT_MODEL
+from topictrace.provider.voyageRerankProvider import rerank_documents
 
-log = structlog.get_logger()
+from topictrace.rag.documentRetrieve.graph.state import RAGState
+from topictrace.rag.documentRetrieve.router import classify_intent
+from topictrace.rag.documentRetrieve.grader import grade_chunks
+from topictrace.rag.documentRetrieve.graphAgent import gather_graph_facts
+from topictrace.prompts.answer_generator import build_final_answer_prompt
 
-_CHUNK_VECTOR_INDEX = "chunk_vector_index"  # must match _INDEX_NAME in ingestion.py
+
+
+
+_CHUNK_VECTOR_INDEX = settings.NEO4J_INDEX_NAME  # must match _INDEX_NAME in ingestion.py
 
 
 def _get_neo4j_client(config: RunnableConfig):
@@ -60,7 +62,12 @@ async def vector_search(state: RAGState, config: RunnableConfig) -> dict:
     """Embed the query and run vector similarity search in Neo4j."""
     client = _get_neo4j_client(config)
 
-    embedder = embeddingModel(api_key=jina_api_key)
+    embedder = embeddingModel(
+        api_key=settings.EMBEDDING_CONFIG.JINA_API_KEY,
+        base_url=settings.EMBEDDING_CONFIG.JINA_BASE_URL,
+        embeddingModel=settings.EMBEDDING_CONFIG.JINA_EMBEDDING_MODEL,
+        max_concurrency=settings.EMBEDDING_CONFIG.MAX_CONCURRENCY
+    )
     query_embedding = await embedder.generateEmebedding(state["query"])
 
     raw_chunks = await retrieve_similar_chunks(

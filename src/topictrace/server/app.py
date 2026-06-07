@@ -1,11 +1,12 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
-from topictrace.server.routes.research import research_router
+from topictrace.server.routes.deep_research.research import research_router
 from topictrace.server.routes.api_key import router as api_key_router
 from topictrace.db.client import init_db
 
-from app.ingestionAPI import ingestionRouter
-from app.retrieveAPI import retrieveRouter
+from topictrace.server.routes.rag.ingestionAPI import ingestionRouter
+from topictrace.server.routes.rag.retrieveAPI import retrieveRouter
+
  
 @asynccontextmanager
 async def lifespan(_app: FastAPI):

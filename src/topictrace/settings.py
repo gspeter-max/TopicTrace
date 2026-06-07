@@ -10,7 +10,9 @@ class embedding_model_config( BaseModel ):
     JINA_API_KEY : str 
     JINA_EMBEDDING_MODEL : str
     JINA_BASE_URL : str
-    MAX_CONCURRENCY : str  
+    MAX_CONCURRENCY : int
+    JINA_EMBEDDING_TASK : str
+
 
 # 1. Create a strict blueprint for what every LLM needs
 class llm_config(BaseModel):
@@ -46,7 +48,8 @@ EMBEDDING_CONFIG = embedding_model_config(
     JINA_API_KEY = os.getenv("JINA_API_KEY", "").strip(),
     JINA_EMBEDDING_MODEL = "jina-embeddings-v2-base-en",
     JINA_BASE_URL = "https://api.jina.ai/v1/embeddings",
-    MAX_CONCURRENCY= 10 
+    MAX_CONCURRENCY= 10,
+    JINA_EMBEDDING_TASK = "retrieval.query"
 )
 
 DATABASE_CONFIG= database_config(
@@ -117,4 +120,20 @@ SUMMARIZE_TEMPERATURE = 0.7
 SEARCH_MAX_RESULTS = 10
 SEARCH_SNIPPET_MAX_CHARS = 300
 FETCH_TIMEOUT_SECONDS = 30
+
+# RAG & Neo4j Settings
+NEO4J_INDEX_NAME = "chunk_vector_index"
+EMBEDDING_DIM = 768
+
+# Entity Resolution Thresholds
+ENTITY_RESOLUTION_FUZZY_THRESHOLD = 88
+ENTITY_RESOLUTION_HIGH_THRESHOLD = 0.90
+ENTITY_RESOLUTION_LOW_THRESHOLD = 0.50
+ENTITY_RESOLUTION_DEFAULT_CANDIDATE_SCORE = 0.75
+
+# Contextual Retrieval & LLM Generation Parameters
+CONTEXTUAL_RETRIEVAL_MAX_TOKENS = 120
+CONTEXTUAL_RETRIEVAL_MAX_CONCURRENCY = 10
+LLM_CLIENT_TIMEOUT_SECONDS = 60
+
 

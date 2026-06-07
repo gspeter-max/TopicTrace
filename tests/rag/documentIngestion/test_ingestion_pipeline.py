@@ -1,6 +1,6 @@
 import asyncio
 
-from src.documentIngestion.ingestion import ingest_document_graph
+from topictrace.rag.documentIngestion.ingestion import ingest_document_graph
 
 
 def test_ingest_document_graph_runs_all_pipeline_stages(monkeypatch):
@@ -30,11 +30,11 @@ def test_ingest_document_graph_runs_all_pipeline_stages(monkeypatch):
     async def fake_persist_document_graph(*args, **kwargs):
         recorded_stage_names.append("persist")
 
-    monkeypatch.setattr("src.documentIngestion.ingestion.build_contextualized_document", fake_build_contextualized_document)
-    monkeypatch.setattr("src.documentIngestion.ingestion.build_contextualized_chunk_embeddings", fake_generate_embeddings_for_text_list)
-    monkeypatch.setattr("src.documentIngestion.ingestion.extract_chunk_graph_data_in_parallel", fake_extract_chunk_graph_data_in_parallel)
-    monkeypatch.setattr("src.documentIngestion.ingestion.resolve_entities_for_graph", fake_resolve_entities_for_graph)
-    monkeypatch.setattr("src.documentIngestion.ingestion.persist_document_graph", fake_persist_document_graph)
+    monkeypatch.setattr("topictrace.rag.documentIngestion.ingestion.build_contextualized_document", fake_build_contextualized_document)
+    monkeypatch.setattr("topictrace.rag.documentIngestion.ingestion.build_contextualized_chunk_embeddings", fake_generate_embeddings_for_text_list)
+    monkeypatch.setattr("topictrace.rag.documentIngestion.ingestion.extract_chunk_graph_data_in_parallel", fake_extract_chunk_graph_data_in_parallel)
+    monkeypatch.setattr("topictrace.rag.documentIngestion.ingestion.resolve_entities_for_graph", fake_resolve_entities_for_graph)
+    monkeypatch.setattr("topictrace.rag.documentIngestion.ingestion.persist_document_graph", fake_persist_document_graph)
 
     asyncio.run(ingest_document_graph(file_path="data/resume.pdf"))
 
@@ -67,11 +67,11 @@ def test_ingest_document_graph_handles_empty_chunks(monkeypatch):
     async def fake_persist_document_graph(*args, **kwargs):
         recorded_stage_names.append("persist")
 
-    monkeypatch.setattr("src.documentIngestion.ingestion.build_contextualized_document", fake_build_contextualized_document)
-    monkeypatch.setattr("src.documentIngestion.ingestion.build_contextualized_chunk_embeddings", fake_generate_embeddings_for_text_list)
-    monkeypatch.setattr("src.documentIngestion.ingestion.extract_chunk_graph_data_in_parallel", fake_extract_chunk_graph_data_in_parallel)
-    monkeypatch.setattr("src.documentIngestion.ingestion.resolve_entities_for_graph", fake_resolve_entities_for_graph)
-    monkeypatch.setattr("src.documentIngestion.ingestion.persist_document_graph", fake_persist_document_graph)
+    monkeypatch.setattr("topictrace.rag.documentIngestion.ingestion.build_contextualized_document", fake_build_contextualized_document)
+    monkeypatch.setattr("topictrace.rag.documentIngestion.ingestion.build_contextualized_chunk_embeddings", fake_generate_embeddings_for_text_list)
+    monkeypatch.setattr("topictrace.rag.documentIngestion.ingestion.extract_chunk_graph_data_in_parallel", fake_extract_chunk_graph_data_in_parallel)
+    monkeypatch.setattr("topictrace.rag.documentIngestion.ingestion.resolve_entities_for_graph", fake_resolve_entities_for_graph)
+    monkeypatch.setattr("topictrace.rag.documentIngestion.ingestion.persist_document_graph", fake_persist_document_graph)
 
     summary = asyncio.run(ingest_document_graph(file_path="data/empty.pdf"))
 

@@ -16,7 +16,8 @@ These tests verify:
 from unittest.mock import MagicMock, patch, mock_open
 import pytest
 
-from documentIngestion.parseDocument import parse_document, get_all_pages_text
+from topictrace.rag.documentIngestion.parseDocument import parse_document, get_all_pages_text
+
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -59,7 +60,7 @@ def test_parse_document_uses_single_call_with_upload_file():
     api_result = _make_api_result([_make_text_page(1, "content")], [])
     client = _make_client(api_result)
 
-    with patch("documentIngestion.parseDocument._build_client", return_value=client), \
+    with patch("topictrace.rag.documentIngestion.parseDocument._build_client", return_value=client), \
          patch("builtins.open", mock_open(read_data=b"pdf bytes")):
         parse_document("some/file.pdf")
 
@@ -72,7 +73,7 @@ def test_parse_document_passes_upload_file_kwarg():
     api_result = _make_api_result([_make_text_page(1, "content")], [])
     client = _make_client(api_result)
 
-    with patch("documentIngestion.parseDocument._build_client", return_value=client), \
+    with patch("topictrace.rag.documentIngestion.parseDocument._build_client", return_value=client), \
          patch("builtins.open", mock_open(read_data=b"bytes")):
         parse_document("my_doc.pdf")
 
@@ -86,7 +87,7 @@ def test_parse_document_requests_text_and_items_expand():
     api_result = _make_api_result([_make_text_page(1, "content")], [])
     client = _make_client(api_result)
 
-    with patch("documentIngestion.parseDocument._build_client", return_value=client), \
+    with patch("topictrace.rag.documentIngestion.parseDocument._build_client", return_value=client), \
          patch("builtins.open", mock_open(read_data=b"bytes")):
         parse_document("my_doc.pdf")
 
@@ -103,7 +104,7 @@ def test_parse_document_uses_cost_effective_tier():
     api_result = _make_api_result([_make_text_page(1, "content")], [])
     client = _make_client(api_result)
 
-    with patch("documentIngestion.parseDocument._build_client", return_value=client), \
+    with patch("topictrace.rag.documentIngestion.parseDocument._build_client", return_value=client), \
          patch("builtins.open", mock_open(read_data=b"bytes")):
         parse_document("my_doc.pdf")
 
@@ -116,7 +117,7 @@ def test_parse_document_returns_correct_number_of_pages():
     api_result = _make_api_result(text_pages, [])
     client = _make_client(api_result)
 
-    with patch("documentIngestion.parseDocument._build_client", return_value=client), \
+    with patch("topictrace.rag.documentIngestion.parseDocument._build_client", return_value=client), \
          patch("builtins.open", mock_open(read_data=b"bytes")):
         pages = parse_document("doc.pdf")
 
@@ -129,7 +130,7 @@ def test_parse_document_page_numbers_come_from_text_page_object():
     api_result = _make_api_result(text_pages, [])
     client = _make_client(api_result)
 
-    with patch("documentIngestion.parseDocument._build_client", return_value=client), \
+    with patch("topictrace.rag.documentIngestion.parseDocument._build_client", return_value=client), \
          patch("builtins.open", mock_open(read_data=b"bytes")):
         pages = parse_document("doc.pdf")
 
@@ -143,7 +144,7 @@ def test_parse_document_strips_whitespace_from_page_text():
     api_result = _make_api_result(text_pages, [])
     client = _make_client(api_result)
 
-    with patch("documentIngestion.parseDocument._build_client", return_value=client), \
+    with patch("topictrace.rag.documentIngestion.parseDocument._build_client", return_value=client), \
          patch("builtins.open", mock_open(read_data=b"bytes")):
         pages = parse_document("doc.pdf")
 
@@ -157,7 +158,7 @@ def test_parse_document_attaches_items_page_to_correct_page():
     api_result = _make_api_result(text_pages, [items_page_2])
     client = _make_client(api_result)
 
-    with patch("documentIngestion.parseDocument._build_client", return_value=client), \
+    with patch("topictrace.rag.documentIngestion.parseDocument._build_client", return_value=client), \
          patch("builtins.open", mock_open(read_data=b"bytes")):
         pages = parse_document("doc.pdf")
 
@@ -171,7 +172,7 @@ def test_parse_document_page_with_no_items_gets_empty_list():
     api_result = _make_api_result(text_pages, [])
     client = _make_client(api_result)
 
-    with patch("documentIngestion.parseDocument._build_client", return_value=client), \
+    with patch("topictrace.rag.documentIngestion.parseDocument._build_client", return_value=client), \
          patch("builtins.open", mock_open(read_data=b"bytes")):
         pages = parse_document("doc.pdf")
 
@@ -185,7 +186,7 @@ def test_parse_document_handles_no_text_in_response():
     api_result.items = None
     client = _make_client(api_result)
 
-    with patch("documentIngestion.parseDocument._build_client", return_value=client), \
+    with patch("topictrace.rag.documentIngestion.parseDocument._build_client", return_value=client), \
          patch("builtins.open", mock_open(read_data=b"bytes")):
         pages = parse_document("doc.pdf")
 
@@ -198,7 +199,7 @@ def test_parse_document_each_page_dict_has_required_keys():
     api_result = _make_api_result(text_pages, [])
     client = _make_client(api_result)
 
-    with patch("documentIngestion.parseDocument._build_client", return_value=client), \
+    with patch("topictrace.rag.documentIngestion.parseDocument._build_client", return_value=client), \
          patch("builtins.open", mock_open(read_data=b"bytes")):
         pages = parse_document("doc.pdf")
 

@@ -1,4 +1,4 @@
-from src.documentIngestion.entityResolution import (
+from topictrace.rag.documentIngestion.entityResolution import (
     group_entities_by_normalized_name,
     find_fuzzy_merge_candidates,
     split_clear_cases_from_ambiguous_cases,
@@ -43,7 +43,7 @@ def test_split_clear_cases_from_ambiguous_cases_with_extreme_values():
     assert len(diff) == 1
     assert len(ambiguous) == 0
 
-from src.documentIngestion.entityResolution import build_entity_resolution_review_payload
+from topictrace.rag.documentIngestion.entityResolution import build_entity_resolution_review_payload
 
 def test_build_entity_resolution_review_payload_only_contains_ambiguous_cases():
     """This test makes sure we only send the confusing pairs of names to the AI for review, and not the obvious ones."""

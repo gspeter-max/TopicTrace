@@ -6,13 +6,13 @@ sufficient information to answer the query. If insufficient, provides a reason
 to justify graph escalation.
 """
 import json
-import structlog
+from topictrace import log
 from pydantic import BaseModel, Field
 
-from providers.llmProvider import build_mistral_client, DEFAULT_MODEL
-from documentRetrieve.prompts.grader_chunk_evaluator import GRADER_PROMPT
+from topictrace.provider.llm import build_mistral_client, DEFAULT_MODEL
+from topictrace.prompts.grader_chunk_evaluator import GRADER_PROMPT
 
-log = structlog.get_logger()
+
 
 
 class GraderResult(BaseModel):

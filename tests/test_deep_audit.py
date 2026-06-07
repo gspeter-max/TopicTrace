@@ -536,7 +536,7 @@ class TestAuthMiddleware:
 
     @patch("topictrace.server.middleware.pool")
     @patch("topictrace.db.client.pool")
-    @patch("topictrace.server.routes.research.app.ainvoke", new_callable=AsyncMock)
+    @patch("topictrace.server.routes.deep_research.research.app.ainvoke", new_callable=AsyncMock)
     def test_valid_key_allows_request(self, mock_ainvoke, mock_db_pool, mock_middleware_pool):
         """Request with valid key should pass auth (may fail at agent level)."""
         from fastapi.testclient import TestClient

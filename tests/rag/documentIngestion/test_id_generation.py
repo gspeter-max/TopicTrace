@@ -1,5 +1,6 @@
 import hashlib
-from documentIngestion.graphPersistence import generate_stable_entity_id
+from topictrace.rag.documentIngestion.graphPersistence import generate_stable_entity_id
+
 
 def test_generate_stable_entity_id_is_consistent():
     """This test checks if the same name always gets the same code."""

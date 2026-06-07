@@ -16,7 +16,8 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from documentRetrieve.grader import grade_chunks, GraderResult
+from topictrace.rag.documentRetrieve.grader import grade_chunks, GraderResult
+
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -38,7 +39,7 @@ async def test_grader_sends_temperature_zero():
     """Grading must be deterministic — temperature must be exactly 0.0."""
     resp = _make_llm_response(json.dumps({"sufficient": True, "reason": "", "answer": "Yes."}))
 
-    with patch("documentRetrieve.grader.build_mistral_client") as mock_builder:
+    with patch("topictrace.rag.documentRetrieve.grader.build_mistral_client") as mock_builder:
         mock_client = AsyncMock()
         mock_client.chat.completions.create = AsyncMock(return_value=resp)
         mock_builder.return_value = mock_client
@@ -54,7 +55,7 @@ async def test_grader_requests_json_object_format():
     """Grader must request json_object format from Mistral."""
     resp = _make_llm_response(json.dumps({"sufficient": True, "reason": "", "answer": "Yes."}))
 
-    with patch("documentRetrieve.grader.build_mistral_client") as mock_builder:
+    with patch("topictrace.rag.documentRetrieve.grader.build_mistral_client") as mock_builder:
         mock_client = AsyncMock()
         mock_client.chat.completions.create = AsyncMock(return_value=resp)
         mock_builder.return_value = mock_client
@@ -72,7 +73,7 @@ async def test_grader_sends_both_query_and_chunks_to_llm():
     QUERY = "What is the capital of France?"
     CHUNK = "Paris is a city in Europe."
 
-    with patch("documentRetrieve.grader.build_mistral_client") as mock_builder:
+    with patch("topictrace.rag.documentRetrieve.grader.build_mistral_client") as mock_builder:
         mock_client = AsyncMock()
         mock_client.chat.completions.create = AsyncMock(return_value=resp)
         mock_builder.return_value = mock_client
@@ -92,7 +93,7 @@ async def test_grader_joins_multiple_chunks_with_separator():
     resp = _make_llm_response(json.dumps({"sufficient": True, "reason": "", "answer": "Yes."}))
     chunks = ["chunk one text", "chunk two text", "chunk three text"]
 
-    with patch("documentRetrieve.grader.build_mistral_client") as mock_builder:
+    with patch("topictrace.rag.documentRetrieve.grader.build_mistral_client") as mock_builder:
         mock_client = AsyncMock()
         mock_client.chat.completions.create = AsyncMock(return_value=resp)
         mock_builder.return_value = mock_client
@@ -113,7 +114,7 @@ async def test_grader_populates_answer_field_when_sufficient():
     expected_answer = "The answer is Paris."
     resp = _make_llm_response(json.dumps({"sufficient": True, "reason": "", "answer": expected_answer}))
 
-    with patch("documentRetrieve.grader.build_mistral_client") as mock_builder:
+    with patch("topictrace.rag.documentRetrieve.grader.build_mistral_client") as mock_builder:
         mock_client = AsyncMock()
         mock_client.chat.completions.create = AsyncMock(return_value=resp)
         mock_builder.return_value = mock_client
@@ -128,7 +129,7 @@ async def test_grader_answer_is_empty_when_insufficient():
     """When sufficient=False, the answer field must be empty string."""
     resp = _make_llm_response(json.dumps({"sufficient": False, "reason": "missing data", "answer": ""}))
 
-    with patch("documentRetrieve.grader.build_mistral_client") as mock_builder:
+    with patch("topictrace.rag.documentRetrieve.grader.build_mistral_client") as mock_builder:
         mock_client = AsyncMock()
         mock_client.chat.completions.create = AsyncMock(return_value=resp)
         mock_builder.return_value = mock_client
@@ -144,7 +145,7 @@ async def test_grader_answer_is_empty_on_json_parse_error():
     """On JSON parse failure, the answer field must be empty — never None."""
     resp = _make_llm_response("{{broken json}")
 
-    with patch("documentRetrieve.grader.build_mistral_client") as mock_builder:
+    with patch("topictrace.rag.documentRetrieve.grader.build_mistral_client") as mock_builder:
         mock_client = AsyncMock()
         mock_client.chat.completions.create = AsyncMock(return_value=resp)
         mock_builder.return_value = mock_client
@@ -159,7 +160,7 @@ async def test_grader_answer_is_empty_on_json_parse_error():
 @pytest.mark.anyio
 async def test_grader_answer_is_empty_on_llm_exception():
     """On LLM exception, the answer field must be empty — never None or raise."""
-    with patch("documentRetrieve.grader.build_mistral_client") as mock_builder:
+    with patch("topictrace.rag.documentRetrieve.grader.build_mistral_client") as mock_builder:
         mock_client = AsyncMock()
         mock_client.chat.completions.create = AsyncMock(side_effect=RuntimeError("API down"))
         mock_builder.return_value = mock_client
@@ -176,7 +177,7 @@ async def test_grader_result_is_grader_result_type():
     """The return type must always be GraderResult — in every code path."""
     resp = _make_llm_response(json.dumps({"sufficient": True, "reason": "", "answer": "ans"}))
 
-    with patch("documentRetrieve.grader.build_mistral_client") as mock_builder:
+    with patch("topictrace.rag.documentRetrieve.grader.build_mistral_client") as mock_builder:
         mock_client = AsyncMock()
         mock_client.chat.completions.create = AsyncMock(return_value=resp)
         mock_builder.return_value = mock_client
@@ -195,7 +196,7 @@ async def test_grader_llm_is_called_exactly_once_per_invocation():
     """For a single grade_chunks() call with chunks, LLM must be called exactly once."""
     resp = _make_llm_response(json.dumps({"sufficient": True, "reason": "", "answer": "yes"}))
 
-    with patch("documentRetrieve.grader.build_mistral_client") as mock_builder:
+    with patch("topictrace.rag.documentRetrieve.grader.build_mistral_client") as mock_builder:
         mock_client = AsyncMock()
         mock_client.chat.completions.create = AsyncMock(return_value=resp)
         mock_builder.return_value = mock_client

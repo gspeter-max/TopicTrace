@@ -16,8 +16,14 @@ import pytest
 from fastapi.testclient import TestClient
 from fastapi import FastAPI
 
-from app.models.retrieveModels import QueryRequest, QueryResponse
-from app.retrieveAPI import retrieveRouter
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+from fastapi.testclient import TestClient
+from fastapi import FastAPI
+
+from topictrace.server.schemas.rag.retrieveModels import QueryRequest, QueryResponse
+from topictrace.server.routes.rag.retrieveAPI import retrieveRouter
 
 # Setup a dummy app to test the router
 app = FastAPI()
@@ -50,11 +56,11 @@ async def test_complex_path_handle_query_returns_correct_response():
     }
     mock_graph = _make_mock_graph(final_state)
 
-    with patch("documentRetrieve.retrieve._rag_graph", mock_graph), \
-         patch("documentRetrieve.retrieve.Neo4jClient") as mock_neo4j:
+    with patch("topictrace.rag.documentRetrieve.retrieve._rag_graph", mock_graph), \
+         patch("topictrace.rag.documentRetrieve.retrieve.Neo4jClient") as mock_neo4j:
         mock_neo4j.return_value.close = AsyncMock()
         req = QueryRequest(query="complex query", top_k=5, top_k_rerank=3)
-        res = await __import__("documentRetrieve.retrieve", fromlist=["handle_query"]).handle_query(req)
+        res = await __import__("topictrace.rag.documentRetrieve.retrieve", fromlist=["handle_query"]).handle_query(req)
 
     assert res.intent == "complex"
     assert res.used_graph_search is True
@@ -75,11 +81,11 @@ async def test_simple_sufficient_path_returns_correct_response():
     }
     mock_graph = _make_mock_graph(final_state)
 
-    with patch("documentRetrieve.retrieve._rag_graph", mock_graph), \
-         patch("documentRetrieve.retrieve.Neo4jClient") as mock_neo4j:
+    with patch("topictrace.rag.documentRetrieve.retrieve._rag_graph", mock_graph), \
+         patch("topictrace.rag.documentRetrieve.retrieve.Neo4jClient") as mock_neo4j:
         mock_neo4j.return_value.close = AsyncMock()
         req = QueryRequest(query="simple query", top_k=5, top_k_rerank=3)
-        from documentRetrieve.retrieve import handle_query
+        from topictrace.rag.documentRetrieve.retrieve import handle_query
         res = await handle_query(req)
 
     assert res.intent == "simple"
@@ -100,11 +106,11 @@ async def test_simple_escalation_path_returns_reason():
     }
     mock_graph = _make_mock_graph(final_state)
 
-    with patch("documentRetrieve.retrieve._rag_graph", mock_graph), \
-         patch("documentRetrieve.retrieve.Neo4jClient") as mock_neo4j:
+    with patch("topictrace.rag.documentRetrieve.retrieve._rag_graph", mock_graph), \
+         patch("topictrace.rag.documentRetrieve.retrieve.Neo4jClient") as mock_neo4j:
         mock_neo4j.return_value.close = AsyncMock()
         req = QueryRequest(query="simple query", top_k=5, top_k_rerank=3)
-        from documentRetrieve.retrieve import handle_query
+        from topictrace.rag.documentRetrieve.retrieve import handle_query
         res = await handle_query(req)
 
     assert res.intent == "simple"
@@ -119,13 +125,13 @@ async def test_neo4j_client_is_closed_even_if_graph_fails():
     mock_graph = MagicMock()
     mock_graph.ainvoke = AsyncMock(side_effect=RuntimeError("graph exploded"))
 
-    with patch("documentRetrieve.retrieve._rag_graph", mock_graph), \
-         patch("documentRetrieve.retrieve.Neo4jClient") as mock_neo4j:
+    with patch("topictrace.rag.documentRetrieve.retrieve._rag_graph", mock_graph), \
+         patch("topictrace.rag.documentRetrieve.retrieve.Neo4jClient") as mock_neo4j:
         mock_client = MagicMock()
         mock_client.close = AsyncMock()
         mock_neo4j.return_value = mock_client
 
-        from documentRetrieve.retrieve import handle_query
+        from topictrace.rag.documentRetrieve.retrieve import handle_query
         with pytest.raises(RuntimeError, match="graph exploded"):
             await handle_query(QueryRequest(query="q", top_k=5, top_k_rerank=3))
 
@@ -141,13 +147,13 @@ async def test_neo4j_client_passed_via_config():
     }
     mock_graph = _make_mock_graph(final_state)
 
-    with patch("documentRetrieve.retrieve._rag_graph", mock_graph), \
-         patch("documentRetrieve.retrieve.Neo4jClient") as mock_neo4j:
+    with patch("topictrace.rag.documentRetrieve.retrieve._rag_graph", mock_graph), \
+         patch("topictrace.rag.documentRetrieve.retrieve.Neo4jClient") as mock_neo4j:
         mock_client = MagicMock()
         mock_client.close = AsyncMock()
         mock_neo4j.return_value = mock_client
 
-        from documentRetrieve.retrieve import handle_query
+        from topictrace.rag.documentRetrieve.retrieve import handle_query
         await handle_query(QueryRequest(query="q", top_k=5, top_k_rerank=3))
 
     call_kwargs = mock_graph.ainvoke.call_args
@@ -159,7 +165,7 @@ async def test_neo4j_client_passed_via_config():
 
 def test_api_route_delegates_to_handle_query():
     """The /retrieve/query endpoint must delegate to handle_query."""
-    with patch("app.retrieveAPI.handle_query") as mock_handle:
+    with patch("topictrace.server.routes.rag.retrieveAPI.handle_query") as mock_handle:
         mock_handle.return_value = QueryResponse(
             answer="test answer",
             intent="simple",

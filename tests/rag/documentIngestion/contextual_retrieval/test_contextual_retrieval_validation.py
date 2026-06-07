@@ -6,8 +6,8 @@ import respx
 from httpx import Response
 from openai import APIStatusError
 
-import src.documentIngestion.contextual_retrieval as module
-from src.documentIngestion.contextual_retrieval import (
+import topictrace.rag.documentIngestion.contextual_retrieval as module
+from topictrace.rag.documentIngestion.contextual_retrieval import (
     build_contextualized_document,
     build_mistral_client,
     generate_chunk_context,
@@ -129,7 +129,7 @@ def test_validation_api_failure_is_captured():
 
 
 def test_validation_empty_document_is_captured(monkeypatch):
-    from src.documentIngestion import contextual_retrieval as module
+    from topictrace.rag.documentIngestion import contextual_retrieval as module
 
     monkeypatch.setattr(module, "parse_document", lambda file_path: [{"pages": []}])
     monkeypatch.setattr(module, "get_all_pages_text", lambda parsed: "")
@@ -184,6 +184,6 @@ def test_validation_expected_load_is_captured(monkeypatch):
 
 
 def test_validation_build_mistral_client_requires_key_when_config_is_empty(monkeypatch):
-    monkeypatch.setattr("providers.llmProvider.mistral_api_key", "")
+    monkeypatch.setattr("topictrace.settings.LLM_CONFIG.MISTRAL_AI.LLM_API_KEY", "")
     with pytest.raises(EnvironmentError):
         asyncio.run(build_mistral_client(api_key=""))

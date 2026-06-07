@@ -2,13 +2,14 @@ import json
 from typing import Any
 from openai import AsyncOpenAI
 
-from documentIngestion.graphRelationshipSchema import get_relationship_schema_prompt_text
-from documentIngestion.models.graphExtractionModels import ChunkGraphExtractionResult
-from documentIngestion.prompts.graph.prompts_for_extracting_graph_data import (
+from topictrace.rag.documentIngestion.graphRelationshipSchema import get_relationship_schema_prompt_text
+from topictrace.rag.documentIngestion.models.graphExtractionModels import ChunkGraphExtractionResult
+from topictrace.prompts.ingestion.prompts_for_extracting_graph_data import (
     SYSTEM_PROMPT,
     USER_PROMPT_TEMPLATE,
 )
-from providers.llmProvider import DEFAULT_MODEL
+from topictrace.provider.llm import DEFAULT_MODEL
+
 
 
 def parse_chunk_graph_extraction_response(response_payload: dict[str, Any]) -> ChunkGraphExtractionResult:

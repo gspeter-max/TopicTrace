@@ -3,12 +3,14 @@ from typing import Any
 from openai import AsyncOpenAI
 from rapidfuzz import fuzz
 
-from documentIngestion.models.graphExtractionModels import EntityResolutionDecision
-from documentIngestion.prompts.graph.prompts_for_checking_if_two_names_are_the_same import (
+from topictrace import settings
+from topictrace.rag.documentIngestion.models.graphExtractionModels import EntityResolutionDecision
+from topictrace.prompts.ingestion.prompts_for_checking_if_two_names_are_the_same import (
     SYSTEM_PROMPT,
     USER_PROMPT_TEMPLATE,
 )
-from providers.llmProvider import DEFAULT_MODEL
+from topictrace.provider.llm import DEFAULT_MODEL
+
 
 
 def group_entities_by_normalized_name(raw_entity_names: list[str]) -> dict[str, list[str]]:
@@ -20,7 +22,10 @@ def group_entities_by_normalized_name(raw_entity_names: list[str]) -> dict[str, 
     return grouped_names
 
 
-def find_fuzzy_merge_candidates(raw_entity_names: list[str], threshold: int = 88) -> list[tuple[str, str]]:
+def find_fuzzy_merge_candidates(
+    raw_entity_names: list[str],
+    threshold: int = settings.ENTITY_RESOLUTION_FUZZY_THRESHOLD,
+) -> list[tuple[str, str]]:
     """This function finds pairs of names that look very similar, like "Apple" and "Apple Inc", and puts them together so we can check if they mean the same thing."""
     fuzzy_merge_candidates: list[tuple[str, str]] = []
     for left_index, left_name in enumerate(raw_entity_names):
@@ -32,8 +37,8 @@ def find_fuzzy_merge_candidates(raw_entity_names: list[str], threshold: int = 88
 
 def split_clear_cases_from_ambiguous_cases(
     pairs_with_scores: list[tuple[str, str, float]],
-    high_threshold: float = 0.90,
-    low_threshold: float = 0.50,
+    high_threshold: float = settings.ENTITY_RESOLUTION_HIGH_THRESHOLD,
+    low_threshold: float = settings.ENTITY_RESOLUTION_LOW_THRESHOLD,
 ) -> tuple[list[tuple[str, str, float]], list[tuple[str, str, float]], list[tuple[str, str, float]]]:
     """This function checks that we can correctly separate the pairs of names that are super obvious from the pairs that are confusing and need the AI to look at them."""
     same_entity_pairs = []

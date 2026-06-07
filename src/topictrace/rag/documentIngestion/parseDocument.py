@@ -10,13 +10,14 @@ Response structure from the API:
     TextPage            → .page_number (int), .text (str)
     result.items        → Items object with .pages: List[ItemsPage]
 """
+from topictrace import settings
 from llama_cloud import LlamaCloud
-from config import llama_parse_api_key
 
 
 def _build_client() -> LlamaCloud:
     """Initialise the LlamaCloud client using the API key from config."""
-    return LlamaCloud(api_key=llama_parse_api_key)
+    return LlamaCloud(api_key=settings.LLAMA_PARSE_APIKEY)
+
 
 
 def parse_document(file_path: str) -> list[dict]:

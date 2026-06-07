@@ -16,8 +16,8 @@ Graph topology:
 """
 from langgraph.graph import StateGraph, START, END
 
-from documentRetrieve.graph.state import RAGState
-from documentRetrieve.graph.nodes import (
+from topictrace.rag.documentRetrieve.graph.state import RAGState
+from topictrace.rag.documentRetrieve.graph.nodes import (
     route_query,
     vector_search,
     grade_chunks_node,
@@ -25,7 +25,8 @@ from documentRetrieve.graph.nodes import (
     rerank,
     answer_node,
 )
-from documentRetrieve.graph.edges import route_after_vector_search, route_after_grader
+from topictrace.rag.documentRetrieve.graph.edges import route_after_vector_search, route_after_grader
+
 
 
 def build_rag_graph():

@@ -14,7 +14,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from providers.voyageRerankProvider import rerank_documents
+from topictrace.provider.voyageRerankProvider import rerank_documents
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -42,7 +42,7 @@ async def test_reranker_sends_query_and_documents_in_payload():
 
     resp = _make_mock_http_response(_make_voyage_response([0.5, 0.8]))
 
-    with patch("providers.voyageRerankProvider.httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
+    with patch("topictrace.provider.voyageRerankProvider.httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
         mock_post.return_value = resp
         await rerank_documents(query=query, documents=docs, top_k=2)
 
@@ -63,7 +63,7 @@ async def test_reranker_maps_voyage_index_back_to_original_docs():
 
     resp = _make_mock_http_response(_make_voyage_response(scores))
 
-    with patch("providers.voyageRerankProvider.httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
+    with patch("topictrace.provider.voyageRerankProvider.httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
         mock_post.return_value = resp
         result = await rerank_documents(query="q", documents=docs, top_k=3)
 
@@ -80,7 +80,7 @@ async def test_reranker_top_k_larger_than_docs_returns_all_docs():
 
     resp = _make_mock_http_response(_make_voyage_response(scores))
 
-    with patch("providers.voyageRerankProvider.httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
+    with patch("topictrace.provider.voyageRerankProvider.httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
         mock_post.return_value = resp
         result = await rerank_documents(query="q", documents=docs, top_k=999)
 
@@ -93,7 +93,7 @@ async def test_reranker_api_http_error_propagates():
     resp = MagicMock()
     resp.raise_for_status.side_effect = Exception("401 Unauthorized")
 
-    with patch("providers.voyageRerankProvider.httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
+    with patch("topictrace.provider.voyageRerankProvider.httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
         mock_post.return_value = resp
 
         with pytest.raises(Exception, match="401"):
@@ -108,7 +108,7 @@ async def test_reranker_single_document_returns_that_document():
 
     resp = _make_mock_http_response(_make_voyage_response(scores))
 
-    with patch("providers.voyageRerankProvider.httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
+    with patch("topictrace.provider.voyageRerankProvider.httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
         mock_post.return_value = resp
         result = await rerank_documents(query="q", documents=docs, top_k=1)
 
@@ -123,7 +123,7 @@ async def test_reranker_output_length_matches_top_k():
 
     resp = _make_mock_http_response(_make_voyage_response(scores))
 
-    with patch("providers.voyageRerankProvider.httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
+    with patch("topictrace.provider.voyageRerankProvider.httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
         mock_post.return_value = resp
         result = await rerank_documents(query="q", documents=docs, top_k=3)
 
@@ -138,7 +138,7 @@ async def test_reranker_output_is_sorted_highest_score_first():
 
     resp = _make_mock_http_response(_make_voyage_response(scores))
 
-    with patch("providers.voyageRerankProvider.httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
+    with patch("topictrace.provider.voyageRerankProvider.httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
         mock_post.return_value = resp
         result = await rerank_documents(query="q", documents=docs, top_k=3)
 

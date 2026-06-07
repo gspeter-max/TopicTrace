@@ -15,20 +15,21 @@ sys.path.insert(0, str(project_root))
 import src  # This triggers structlog.configure in src/__init__.py
 import structlog
 
-from config import mistral_api_key, neo4j_uri, neo4j_user, neo4j_password
-from db.neo4j import Neo4jClient
-from providers.llmProvider import build_mistral_client
-from documentIngestion.contextual_retrieval import build_contextualized_document
-from documentIngestion.ingestion import (
+from topictrace import settings
+from topictrace.db.neo4j import Neo4jClient
+from topictrace.provider.llm import build_mistral_client
+from topictrace.rag.documentIngestion.contextual_retrieval import build_contextualized_document
+from topictrace.rag.documentIngestion.ingestion import (
     build_contextualized_chunk_embeddings,
     extract_chunk_graph_data_in_parallel,
     resolve_entities_for_graph,
     persist_document_graph,
 )
-from documentIngestion.graphPersistence import (
+from topictrace.rag.documentIngestion.graphPersistence import (
     rewrite_graph_results_to_canonical_entities,
     build_neo4j_graph_write_payload,
 )
+
 
 log = structlog.get_logger(__name__)
 
@@ -80,7 +81,11 @@ async def verify_database_persistence(document_id: str) -> dict[str, Any]:
         "neo4j_status": "disconnected"
     }
     
-    client = Neo4jClient(neo4j_uri, neo4j_user, neo4j_password)
+    client = Neo4jClient(
+        settings.DATABASE_CONFIG.NEO4J.NEO4J_URI,
+        settings.DATABASE_CONFIG.NEO4J.NEO4J_USER,
+        settings.DATABASE_CONFIG.NEO4J.NEO4J_PASSWORD,
+    )
     try:
         # 1. Count Chunks
         chunk_query = "MATCH (c:Chunk {document_id: $doc_id}) RETURN count(c) as count"
@@ -223,8 +228,8 @@ def main() -> int:
     output_dir = Path(args.output_dir).expanduser().resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    if not mistral_api_key:
-        raise EnvironmentError("MISTRAL_API_KEY is not configured in src.config")
+    if not settings.LLM_CONFIG.MISTRAL_AI.LLM_API_KEY:
+        raise EnvironmentError("MISTRAL_API_KEY is not configured in settings")
 
     log.info("We are starting the step by step test with checks", pdf_path=str(pdf_path))
     report_path = asyncio.run(run_pipeline_step_by_step(pdf_path, output_dir))

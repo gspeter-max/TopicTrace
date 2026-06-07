@@ -1,11 +1,11 @@
 import pytest
 import pydantic
 
-from src.documentIngestion.graphRelationshipSchema import (
+from topictrace.rag.documentIngestion.graphRelationshipSchema import (
     ALLOWED_RELATIONSHIP_TYPES,
     get_relationship_schema_prompt_text,
 )
-from src.documentIngestion.models.graphExtractionModels import RawGraphRelationship, RawGraphEntity
+from topictrace.rag.documentIngestion.models.graphExtractionModels import RawGraphRelationship, RawGraphEntity
 
 
 def test_relationship_schema_prompt_lists_every_allowed_relationship():
@@ -37,7 +37,7 @@ def test_raw_graph_entity_rejects_empty_evidence_text():
             evidence_text="",
         )
 
-from src.documentIngestion.graphExtraction import parse_chunk_graph_extraction_response
+from topictrace.rag.documentIngestion.graphExtraction import parse_chunk_graph_extraction_response
 
 
 def test_parse_chunk_graph_extraction_response_returns_entities_and_relationships():

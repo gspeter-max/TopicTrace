@@ -1,7 +1,8 @@
 from typing import Any
 import hashlib
 
-from documentIngestion.models.graphExtractionModels import ChunkGraphExtractionResult, CanonicalGraphPersistencePayload
+from topictrace.rag.documentIngestion.models.graphExtractionModels import ChunkGraphExtractionResult, CanonicalGraphPersistencePayload
+
 
 def generate_stable_entity_id(name: str) -> str:
     """

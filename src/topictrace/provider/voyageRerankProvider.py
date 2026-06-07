@@ -37,14 +37,14 @@ async def rerank_documents(
         "Content-Type": "application/json",
     }
     payload = {
-        "model": settings.VOYAGE_RERANK_MODEL,
+        "model": settings.RERANKER_CONFIG.VOYAGE_RERANK_MODEL,
         "query": query,
         "documents": documents,
         "top_k": top_k,
     }
 
     async with httpx.AsyncClient() as client:
-        response = await client.post(settings.VOYAGE_RERANK_URL, headers=headers, json=payload)
+        response = await client.post(settings.RERANKER_CONFIG.VOYAGE_RERANK_URL, headers=headers, json=payload)
         response.raise_for_status()
 
     data = response.json()

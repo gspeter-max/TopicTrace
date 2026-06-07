@@ -4,12 +4,12 @@ import respx
 from httpx import Response
 from openai import APIStatusError
 
-from config import mistral_api_key
-from documentIngestion.contextual_retrieval import (
+from topictrace import settings
+from topictrace.rag.documentIngestion.contextual_retrieval import (
     generate_chunk_context,
 )
+from topictrace.provider.llm import build_mistral_client
 
-from providers.llmProvider import build_mistral_client
 
 @respx.mock
 def test_generate_chunk_context_with_realistic_openai_shape():
@@ -59,10 +59,12 @@ def test_generate_chunk_context_with_realistic_openai_shape():
 
 @pytest.mark.integration
 def test_real_mistral_smoke():
-    if not mistral_api_key or mistral_api_key.lower() in {"test", "test-key", "dummy", "placeholder"}:
-        pytest.skip("MISTRAL_API_KEY is not configured with a real value in src.config")
+    api_key = settings.LLM_CONFIG.MISTRAL_AI.LLM_API_KEY
+    if not api_key or api_key.lower() in {"test", "test-key", "dummy", "placeholder", "missing_key", "mistral_api_key"}:
+        pytest.skip("MISTRAL_API_KEY is not configured with a real value in settings")
 
-    client = asyncio.run(build_mistral_client(api_key=mistral_api_key))
+    client = asyncio.run(build_mistral_client())
+
     chunk = {
         "chunk_index": 0,
         "text": "Experience: built and operated search systems.",

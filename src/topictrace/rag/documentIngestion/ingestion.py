@@ -1,33 +1,32 @@
 import asyncio
 from typing import Any
-import structlog
-from documentIngestion.contextual_retrieval import build_contextualized_document
-from providers.llmProvider import build_mistral_client
-from providers.embeddingModelProvider import embeddingModel
-from db.neo4j import Neo4jClient
-from db.neo4j.cypherQuerys import (
+
+from topictrace.rag.documentIngestion.contextual_retrieval import build_contextualized_document
+from topictrace.provider.llm import build_mistral_client
+from topictrace.provider.embeddingModelProvider import embeddingModel
+from topictrace.db.neo4j import Neo4jClient
+from topictrace.db.neo4j.cypherQuerys import (
     create_vector_index,
     save_chunk,
     save_document_node,
     save_entity_nodes_and_relationships
 )
-from documentIngestion.graphExtraction import extract_graph_data_from_chunk
-from documentIngestion.entityResolution import (
+from topictrace.rag.documentIngestion.graphExtraction import extract_graph_data_from_chunk
+from topictrace.rag.documentIngestion.entityResolution import (
     group_entities_by_normalized_name,
     find_fuzzy_merge_candidates,
     split_clear_cases_from_ambiguous_cases,
     resolve_ambiguous_entity_pairs,
 )
-from documentIngestion.graphPersistence import (
+from topictrace.rag.documentIngestion.graphPersistence import (
     rewrite_graph_results_to_canonical_entities,
     build_neo4j_graph_write_payload,
 )
-from config import jina_api_key, neo4j_uri, neo4j_user, neo4j_password
 
-log = structlog.get_logger(__name__)
+from topictrace import log, settings
 
-_INDEX_NAME = "chunk_vector_index"
-_EMBEDDING_DIM = 768  # jina-embeddings-v2-base-en output dimension
+_INDEX_NAME = settings.NEO4J_INDEX_NAME
+_EMBEDDING_DIM = settings.EMBEDDING_DIM  # jina-embeddings-v2-base-en output dimension
 
 
 async def build_contextualized_chunk_embeddings(chunks: list[dict[str, Any]]) -> list[list[float]]:
@@ -46,11 +45,12 @@ async def build_contextualized_chunk_embeddings(chunks: list[dict[str, Any]]) ->
         Returns an empty list if no chunks are provided.
     """
     embedding_model = embeddingModel(
-        api_key=jina_api_key,
-        base_url="https://api.jina.ai/v1/embeddings",
-        embeddingModel="jina-embeddings-v2-base-en",
-        max_concurrency=10,
+        api_key=settings.EMBEDDING_CONFIG.JINA_API_KEY,
+        base_url=settings.EMBEDDING_CONFIG.JINA_BASE_URL,
+        embeddingModel=settings.EMBEDDING_CONFIG.JINA_EMBEDDING_MODEL,
+        max_concurrency=settings.EMBEDDING_CONFIG.MAX_CONCURRENCY,
     )
+
     if not chunks:
         return []
     texts = [chunk["contextualized_text"] for chunk in chunks]
@@ -128,7 +128,9 @@ async def resolve_entities_for_graph(raw_chunk_graph_results: list[Any]) -> dict
     unique_canonicals = list(set(canonical_map.values()))
     fuzzy_candidates = find_fuzzy_merge_candidates(unique_canonicals)
     # Fake scores for now
-    same_pairs, ambiguous_pairs, _ = split_clear_cases_from_ambiguous_cases([(l, r, 0.75) for l, r in fuzzy_candidates])
+    same_pairs, ambiguous_pairs, _ = split_clear_cases_from_ambiguous_cases(
+        [(l, r, settings.ENTITY_RESOLUTION_DEFAULT_CANDIDATE_SCORE) for l, r in fuzzy_candidates]
+    )
     
     for l, r, _ in same_pairs:
         canonical_map[r] = canonical_map.get(l, l)
@@ -170,7 +172,11 @@ async def persist_document_graph(
                             containing entities, mentions, relationships, and
                             chunk_to_entity_ids mapping.
     """
-    neo4j_client = Neo4jClient(neo4j_uri, neo4j_user, neo4j_password)
+    neo4j_client = Neo4jClient(
+        settings.DATABASE_CONFIG.NEO4J.NEO4J_URI,
+        settings.DATABASE_CONFIG.NEO4J.NEO4J_USER,
+        settings.DATABASE_CONFIG.NEO4J.NEO4J_PASSWORD,
+    )
     try:
         await create_vector_index(neo4j_client, _INDEX_NAME, _EMBEDDING_DIM)
         
