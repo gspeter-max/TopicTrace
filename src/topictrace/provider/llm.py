@@ -19,6 +19,17 @@ async def build_mistral_client(api_key: str | None = None) -> AsyncOpenAI:
     )
 
 
+async def build_deepseek_client(api_key: str | None = None) -> AsyncOpenAI:
+    config = settings.LLM_CONFIG.DEEPSEEK_AI
+    resolved_key = api_key or config.LLM_API_KEY
+    if not resolved_key:
+        raise EnvironmentError("DEEPSEEK_API_KEY is not configured")
+    return AsyncOpenAI(
+        api_key=resolved_key,
+        base_url=config.LLM_BASE_URL,
+    )
+
+
 _common_headers = {"Accept-Encoding": "identity"}  # no gzip — gateway sends broken compressed responses
 
 

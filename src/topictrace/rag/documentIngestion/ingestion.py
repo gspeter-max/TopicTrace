@@ -25,10 +25,6 @@ from topictrace.rag.documentIngestion.graphPersistence import (
 
 from topictrace import log, settings
 
-_INDEX_NAME = settings.NEO4J_INDEX_NAME
-_EMBEDDING_DIM = settings.EMBEDDING_DIM  # jina-embeddings-v2-base-en output dimension
-
-
 async def build_contextualized_chunk_embeddings(chunks: list[dict[str, Any]]) -> list[list[float]]:
     """
     Converts every chunk's contextualized text into a float vector (embedding)
@@ -178,7 +174,7 @@ async def persist_document_graph(
         settings.DATABASE_CONFIG.NEO4J.NEO4J_PASSWORD,
     )
     try:
-        await create_vector_index(neo4j_client, _INDEX_NAME, _EMBEDDING_DIM)
+        await create_vector_index(neo4j_client, settings.NEO4J_INDEX_NAME, settings.EMBEDDING_DIM)
         
         await save_document_node(
             neo4j_client, 

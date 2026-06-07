@@ -27,11 +27,6 @@ from topictrace.rag.documentRetrieve.graphAgent import gather_graph_facts
 from topictrace.prompts.answer_generator import build_final_answer_prompt
 
 
-
-
-_CHUNK_VECTOR_INDEX = settings.NEO4J_INDEX_NAME  # must match _INDEX_NAME in ingestion.py
-
-
 def _get_neo4j_client(config: RunnableConfig):
     """Extract the shared Neo4j client from LangGraph config."""
     return config["configurable"]["neo4j_client"]
@@ -72,7 +67,7 @@ async def vector_search(state: RAGState, config: RunnableConfig) -> dict:
 
     raw_chunks = await retrieve_similar_chunks(
         client=client,
-        index_name=_CHUNK_VECTOR_INDEX,
+        index_name=settings.NEO4J_INDEX_NAME,
         query_embedding=query_embedding,
         top_k=state["top_k"],
     )
