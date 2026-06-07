@@ -8,16 +8,13 @@ call LLMs, embed text, or read files from disk.
 from __future__ import annotations
 
 from functools import lru_cache
-
+from topictrace import settings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from transformers import XLMRobertaTokenizerFast
 
-TOKENIZER_MODEL = "jinaai/jina-embeddings-v3"
-
-
 @lru_cache(maxsize=1)
 def _get_tokenizer() -> XLMRobertaTokenizerFast:
-    return XLMRobertaTokenizerFast.from_pretrained(TOKENIZER_MODEL)
+    return XLMRobertaTokenizerFast.from_pretrained(settings.TOKENIZER_MODEL)
 
 
 def count_tokens(text: str) -> int:
@@ -32,16 +29,16 @@ def count_tokens(text: str) -> int:
 def chunk_document(
     text: str,
     document_id: str,
-    chunk_size: int = 512,
-    chunk_overlap: int = 100,
+    chunk_size: int | None = None,
+    chunk_overlap: int | None = None,
 ) -> list[dict]:
     """Split a document string into overlapping, paragraph-aware chunks."""
     if not text or not text.strip():
         return []
 
     splitter = RecursiveCharacterTextSplitter(
-        chunk_size=chunk_size,
-        chunk_overlap=chunk_overlap,
+        chunk_size=chunk_size or settings.CHUNK_SIZE,
+        chunk_overlap=chunk_overlap or settings.CHUNK_OVERLAP,
         length_function=count_tokens,
         separators=["\n\n", "\n", ". ", " ", ""],
     )

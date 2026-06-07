@@ -8,7 +8,6 @@ It does not embed text or write vectors.
 
 from __future__ import annotations
 
-import inspect
 from pathlib import Path
 from typing import Any
 
