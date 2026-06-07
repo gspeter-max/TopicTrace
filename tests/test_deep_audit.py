@@ -17,7 +17,7 @@ from unittest.mock import patch, MagicMock, AsyncMock
 import pytest
 
 from topictrace import settings
-from topictrace.db.client import generate_key_hash
+from topictrace.db.postgres.client import generate_key_hash
 
 
 # ============================================================
@@ -29,7 +29,7 @@ class TestGenerateKeyHash:
 
     def test_returns_hex_string(self):
         """Hash should be a hex string."""
-        from topictrace.db.client import generate_key_hash
+        from topictrace.db.postgres.client import generate_key_hash
         result = generate_key_hash("test-key")
         assert isinstance(result, str)
         assert len(result) == 64  # SHA-256 hex = 64 chars
@@ -37,23 +37,23 @@ class TestGenerateKeyHash:
 
     def test_deterministic(self):
         """Same input should always produce same hash."""
-        from topictrace.db.client import generate_key_hash
+        from topictrace.db.postgres.client import generate_key_hash
         assert generate_key_hash("abc") == generate_key_hash("abc")
 
     def test_different_inputs_different_hashes(self):
         """Different inputs should produce different hashes."""
-        from topictrace.db.client import generate_key_hash
+        from topictrace.db.postgres.client import generate_key_hash
         assert generate_key_hash("abc") != generate_key_hash("def")
 
     def test_empty_string(self):
         """Empty string should produce a valid hash."""
-        from topictrace.db.client import generate_key_hash
+        from topictrace.db.postgres.client import generate_key_hash
         result = generate_key_hash("")
         assert len(result) == 64
 
     def test_long_input(self):
         """Long input should work fine."""
-        from topictrace.db.client import generate_key_hash
+        from topictrace.db.postgres.client import generate_key_hash
         long_key = "a" * 10000
         result = generate_key_hash(long_key)
         assert len(result) == 64
@@ -416,7 +416,7 @@ class TestWebFetchEdgeCases:
 class TestHealthEndpoint:
     """Test health endpoint from user perspective."""
 
-    @patch("topictrace.db.client.pool")
+    @patch("topictrace.db.postgres.client.pool")
     def test_health_returns_ok(self, mock_pool):
         """GET /health/live should return 200 without auth."""
         from fastapi.testclient import TestClient
@@ -470,7 +470,7 @@ class TestApiKeyEndpoint:
 class TestAuthMiddleware:
     """Test auth middleware from user perspective."""
 
-    @patch("topictrace.db.client.pool")
+    @patch("topictrace.db.postgres.client.pool")
     def test_missing_auth_header_returns_401(self, mock_pool):
         """Request without Authorization header should return 401."""
         from fastapi.testclient import TestClient
@@ -481,7 +481,7 @@ class TestAuthMiddleware:
             assert response.status_code == 401
             assert "Missing Authorization header" in response.json()["detail"]
 
-    @patch("topictrace.db.client.pool")
+    @patch("topictrace.db.postgres.client.pool")
     def test_empty_auth_header_returns_401(self, mock_pool):
         """Request with empty Bearer token should return 401."""
         from fastapi.testclient import TestClient
@@ -496,7 +496,7 @@ class TestAuthMiddleware:
             assert response.status_code == 401
             assert "Empty API key" in response.json()["detail"]
 
-    @patch("topictrace.db.client.pool")
+    @patch("topictrace.db.postgres.client.pool")
     def test_invalid_key_format_returns_401(self, mock_pool):
         """Request with key missing underscore separator should return 401."""
         from fastapi.testclient import TestClient
@@ -535,7 +535,7 @@ class TestAuthMiddleware:
             assert "Invalid API key" in response.json()["detail"]
 
     @patch("topictrace.server.middleware.pool")
-    @patch("topictrace.db.client.pool")
+    @patch("topictrace.db.postgres.client.pool")
     @patch("topictrace.server.routes.deep_research.research.app.ainvoke", new_callable=AsyncMock)
     def test_valid_key_allows_request(self, mock_ainvoke, mock_db_pool, mock_middleware_pool):
         """Request with valid key should pass auth (may fail at agent level)."""
@@ -563,7 +563,7 @@ class TestAuthMiddleware:
             # May be 422 (validation) or 500 (agent error) but not 401
             assert response.status_code != 401
 
-    @patch("topictrace.db.client.pool")
+    @patch("topictrace.db.postgres.client.pool")
     def test_health_bypasses_auth(self, mock_pool):
         """/health/live should skip auth middleware."""
         from fastapi.testclient import TestClient

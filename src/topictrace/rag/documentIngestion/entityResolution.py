@@ -5,7 +5,7 @@ from rapidfuzz import fuzz
 
 from topictrace import settings
 from topictrace.rag.documentIngestion.models.graphExtractionModels import EntityResolutionDecision
-from topictrace.prompts.ingestion.prompts_for_checking_if_two_names_are_the_same import (
+from topictrace.prompts.ingestion.resolution import (
     SYSTEM_PROMPT,
     USER_PROMPT_TEMPLATE,
 )

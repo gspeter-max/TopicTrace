@@ -1,6 +1,5 @@
 from neo4j import AsyncGraphDatabase
 
-
 class Neo4jClient:
     def __init__(self, uri: str, user: str, password: str):
         self.driver = AsyncGraphDatabase.driver(uri, auth=(user, password))

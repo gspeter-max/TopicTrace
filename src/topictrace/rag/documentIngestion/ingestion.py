@@ -3,7 +3,7 @@ from typing import Any
 
 from topictrace.rag.documentIngestion.contextual_retrieval import build_contextualized_document
 from topictrace.provider.llm import get_llm
-from topictrace.provider.embeddingModelProvider import embeddingModel
+from topictrace.provider.embedding import embeddingModel
 from topictrace.db.neo4j import Neo4jClient
 from topictrace.db.neo4j.cypherQuerys import (
     create_vector_index,
@@ -46,11 +46,11 @@ async def build_contextualized_chunk_embeddings(chunks: list[dict[str, Any]]) ->
         embeddingModel=settings.EMBEDDING_CONFIG.JINA_EMBEDDING_MODEL,
         max_concurrency=settings.EMBEDDING_CONFIG.MAX_CONCURRENCY,
     )
-
+    
     if not chunks:
         return []
     texts = [chunk["contextualized_text"] for chunk in chunks]
-    return await embedding_model.generate_embeddings_for_text_list(texts)
+    return await embedding_model.generateEmebedding(texts)
 
 
 async def extract_chunk_graph_data_in_parallel(chunks: list[dict[str, Any]], provider: str = "MISTRAL_AI") -> list[Any]:
@@ -175,9 +175,8 @@ async def persist_document_graph(
         settings.DATABASE_CONFIG.NEO4J.NEO4J_USER,
         settings.DATABASE_CONFIG.NEO4J.NEO4J_PASSWORD,
     )
-    try:
-        await create_vector_index(neo4j_client, settings.NEO4J_INDEX_NAME, settings.EMBEDDING_DIM)
-        
+    try: 
+               
         await save_document_node(
             neo4j_client, 
             doc["document_id"], 

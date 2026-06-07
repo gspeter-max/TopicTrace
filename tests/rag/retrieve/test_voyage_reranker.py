@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch, AsyncMock
 
 import pytest
 
-from topictrace.provider.voyageRerankProvider import rerank_documents
+from topictrace.provider.rerank import rerank_documents
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -37,7 +37,7 @@ async def test_rerank_returns_top_n_sorted():
     fake_resp.json.return_value = _make_voyage_response(docs, scores)
     fake_resp.raise_for_status = MagicMock()
 
-    with patch("topictrace.provider.voyageRerankProvider.httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
+    with patch("topictrace.provider.rerank.httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
         mock_post.return_value = fake_resp
         result = await rerank_documents(query="test query", documents=docs, top_k=2)
 
@@ -61,7 +61,7 @@ async def test_rerank_respects_top_k():
     fake_resp.json.return_value = _make_voyage_response(docs, scores)
     fake_resp.raise_for_status = MagicMock()
 
-    with patch("topictrace.provider.voyageRerankProvider.httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
+    with patch("topictrace.provider.rerank.httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
         mock_post.return_value = fake_resp
         result = await rerank_documents(query="q", documents=docs, top_k=2)
 
@@ -79,7 +79,7 @@ async def test_rerank_uses_rerank_endpoint():
     fake_resp.json.return_value = _make_voyage_response(docs, scores)
     fake_resp.raise_for_status = MagicMock()
 
-    with patch("topictrace.provider.voyageRerankProvider.httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
+    with patch("topictrace.provider.rerank.httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
         mock_post.return_value = fake_resp
         await rerank_documents(query="q", documents=docs, top_k=1)
         

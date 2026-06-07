@@ -3,6 +3,7 @@ import json
 import asyncio 
 from topictrace import log , settings
 
+
 class embeddingModel:
     def __init__(self, 
         api_key: str, 
@@ -19,15 +20,17 @@ class embeddingModel:
         self.max_concurrency = max_concurrency or settings.EMBEDDING_CONFIG.MAX_CONCURRENCY
         self.task = settings.EMBEDDING_CONFIG.JINA_EMBEDDING_TASK
         
-    async def generateEmebedding(self, text: str) -> list[float]:
+    async def generateEmebedding(self, texts: str | list[str]) -> list[float] | list[list[float]]:
+        is_string = isinstance(texts, str)
+        if is_string:
+            texts = [texts]
+        
         sem = asyncio.Semaphore(self.max_concurrency)
         async with sem:
             data = {
                 "model" : self.embedModel,
                 "task" : self.task,
-                "input" : [
-                    text 
-                ]
+                "input" : texts
             }
 
             response = requests.post(self.url, headers=self.headers, data = json.dumps(data))
@@ -35,17 +38,5 @@ class embeddingModel:
                 log.error("Jina API error", status_code=response.status_code, response_text=response.text)
                 raise Exception(f"Error generating embedding: {response.status_code}")
             
-            return response.json()["data"][0]["embedding"]
-
-    async def generate_embeddings_for_text_list(self, texts: list[str]) -> list[list[float]]:
-        """This turns a list of words into a list of numbers all at once.
-         These numbers help us understand what the words mean so we can find similar words later."""
-        data = {
-            "model": self.embedModel,
-            "task": self.task,
-            "input": texts,
-        }
-        response = requests.post(self.url, headers=self.headers, data=json.dumps(data))
-        response.raise_for_status()
-        response_payload = response.json()
-        return [row["embedding"] for row in response_payload["data"]]
+            embeddings = [object_embedding["embedding"] for object_embedding in response.json()["data"]]
+            return embeddings[0] if is_string else embeddings

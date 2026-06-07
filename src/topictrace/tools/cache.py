@@ -4,7 +4,7 @@ import hashlib
 import datetime
 from psycopg.types.json import Json
 from topictrace import log, settings
-from topictrace.db.client import pool
+from topictrace.db.postgres.client import pool
 
 
 def generate_fetch_cache_key(query: str, url: str) -> str:

@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from topictrace.server.app import app
-from topictrace.db.client import pool, generate_key_hash
+from topictrace.db.postgres.client import pool, generate_key_hash
 from topictrace import log
 
 # ---------------------------------------------------------------------------

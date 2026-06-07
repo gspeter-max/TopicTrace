@@ -4,7 +4,7 @@ from langchain_core.language_models import BaseChatModel
 
 from topictrace.rag.documentIngestion.graphRelationshipSchema import get_relationship_schema_prompt_text
 from topictrace.rag.documentIngestion.models.graphExtractionModels import ChunkGraphExtractionResult
-from topictrace.prompts.ingestion.prompts_for_extracting_graph_data import (
+from topictrace.prompts.ingestion.extraction import (
     SYSTEM_PROMPT,
     USER_PROMPT_TEMPLATE,
 )

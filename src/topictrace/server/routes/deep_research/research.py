@@ -1,8 +1,7 @@
 from fastapi import APIRouter, HTTPException
-from fastapi.background import BackgroundTasks
 from fastapi.responses import StreamingResponse
 from topictrace.server.schemas.deep_research.research import ResearchRequest, ResearchResponse
-from topictrace.prompts.agent_system import get_user_prompt
+from topictrace.prompts.research_agent import get_user_prompt
 from langchain_core.messages import HumanMessage
 from topictrace.agents.graph import app
 from topictrace import log

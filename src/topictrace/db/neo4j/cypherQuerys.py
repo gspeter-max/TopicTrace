@@ -145,7 +145,6 @@ async def retrieve_similar_chunks(
         "embedding":  query_embedding,
     })
 
-
 async def fetch_entity_neighbors_1hop(client: Neo4jClient, entity_ids: list[str]) -> list[dict[str, Any]]:
     """
     Given a list of entity_ids (extracted from chunks), find all immediate 

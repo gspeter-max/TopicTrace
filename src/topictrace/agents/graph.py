@@ -3,7 +3,7 @@ from langgraph.prebuilt import ToolNode
 from topictrace.agents.state import ResearchState
 from topictrace.tools import web_fetch, web_search
 from topictrace.provider.llm import get_llm_with_tools
-from topictrace.prompts.agent_system import get_system_prompt
+from topictrace.prompts.research_agent import get_system_prompt
 from langchain_core.messages import HumanMessage, SystemMessage
 
 

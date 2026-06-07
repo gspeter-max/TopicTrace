@@ -10,7 +10,7 @@ def generate_key_hash(key_part: str) -> str:
     return hashlib.sha256(key_part.encode()).hexdigest()
 
 
-def init_db():
+def init_postgres_db():
     """Create tables if they don't exist."""
     try:
         with pool.connection() as conn:

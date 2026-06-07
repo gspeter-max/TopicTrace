@@ -16,9 +16,9 @@ from langchain_core.runnables import RunnableConfig
 from topictrace import log, settings
 
 from topictrace.db.neo4j.cypherQuerys import retrieve_similar_chunks
-from topictrace.provider.embeddingModelProvider import embeddingModel
+from topictrace.provider.embedding import embeddingModel
 from topictrace.provider.llm import get_llm
-from topictrace.provider.voyageRerankProvider import rerank_documents
+from topictrace.provider.rerank import rerank_documents
 
 from topictrace.rag.documentRetrieve.graph.state import RAGState
 from topictrace.rag.documentRetrieve.router import classify_intent
