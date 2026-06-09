@@ -22,7 +22,11 @@ async def ingest_document(request: IngestionRequest) -> IngestionResponse:
     """
     POST /ingestion/ingest
 
-    Accepts a file path, runs the full document-to-knowledge-graph pipeline,
+    Accepts a file path, 
+    file_path: str = Field(
+        ..., description="Absolute or relative path to the document to ingest."
+    )
+    runs the full document-to-knowledge-graph pipeline,
     and returns a summary of what was ingested.
     """
     try:

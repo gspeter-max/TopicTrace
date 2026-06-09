@@ -15,11 +15,11 @@ class IngestionResponse(BaseModel):
     status: str = Field(..., description="'success' or 'error'.")
     message: str = Field(..., description="Human-readable result message.")
     raw_entity_count: int = Field(
-        0, description="Total entity mentions found before deduplication."
+        default=0, description="Total entity mentions found before deduplication."
     )
     canonical_entity_count: int = Field(
-        0, description="Unique real-world entities after resolution."
+        default=0, description="Unique real-world entities after resolution."
     )
     relationship_count: int = Field(
-        0, description="Number of unique relationships saved to the graph."
+        default=0, description="Number of unique relationships saved to the graph."
     )

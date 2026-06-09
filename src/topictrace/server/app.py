@@ -51,3 +51,5 @@ async def health_check() -> dict:
 
 
 # Import AFTER app is created — triggers @app.middleware registration
+from topictrace.server import middleware
+

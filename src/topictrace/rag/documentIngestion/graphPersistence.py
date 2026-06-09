@@ -66,39 +66,32 @@ def rewrite_graph_results_to_canonical_entities(
         # 1. Process entities and filter out aliases
         for entity in chunk_entitys_relationships.entities:
             entity_name = entity.entity_name
-            resolved_canonical = canonical_by_alias.get(entity_name)
+            if canonical_name_by_raw_name and entity_name not in canonical_name_by_raw_name:
+                if entity_name in canonical_by_alias:
+                    continue
 
-            # Case A: The entity is not present in our map at all (keep as-is with no aliases)
-            if resolved_canonical is None:
-                rewritten_entities.append(
-                    {
-                        "canonical_name": entity_name,
-                        "entity_type": entity.entity_type,
-                        "chunk_id": entity.chunk_id,
-                        "evidence_text": entity.evidence_text,
-                        "alias": []
-                    }
-                )
-            # Case B: The entity is the canonical name (keep and populate its aliases)
-            elif resolved_canonical == entity_name:
-                rewritten_entities.append(
-                    {
-                        "canonical_name": entity_name,
-                        "entity_type": entity.entity_type,
-                        "chunk_id": entity.chunk_id,
-                        "evidence_text": entity.evidence_text,
-                        "alias": canonical_name_by_raw_name.get(entity_name, [])
-                    }
-                )
-            # Case C: The entity is an alias of a different canonical name (skip it)
-            else:
-                continue
+            rewritten_entities.append(
+                {
+                    "canonical_name": canonical_by_alias.get(entity_name, entity_name),
+                    "entity_type": entity.entity_type,
+                    "chunk_id": entity.chunk_id,
+                    "evidence_text": entity.evidence_text,
+                    "alias": canonical_name_by_raw_name.get(entity_name, [])
+                }
+            )
 
         # 2. Process relationships and canonicalize endpoints
         for relationship in chunk_entitys_relationships.relationships:
             # Fall back to original name if the endpoint is not present in our lookup map
             source_canonical = canonical_by_alias.get(relationship.source_entity_name, relationship.source_entity_name)
             target_canonical = canonical_by_alias.get(relationship.target_entity_name, relationship.target_entity_name)
+
+            if canonical_name_by_raw_name:
+                if (
+                    source_canonical not in canonical_name_by_raw_name or \
+                    target_canonical not in canonical_name_by_raw_name
+                ):
+                    continue 
 
             # Deduplicate relationships by checking the (source, type, target) triple
             relationship_key = (source_canonical, relationship.relationship_type, target_canonical)

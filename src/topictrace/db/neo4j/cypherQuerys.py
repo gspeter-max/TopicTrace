@@ -74,7 +74,8 @@ async def save_chunk(
 ENTITY_WRITE_QUERY = """
 UNWIND $entities AS entity_row
 MERGE (e:Entity {canonical_name: entity_row.canonical_name})
-SET e.entity_type = entity_row.entity_type
+SET e.entity_type = entity_row.entity_type,
+    e.entity_id = entity_row.entity_id
 """
 
 MENTION_WRITE_QUERY = """
@@ -102,7 +103,9 @@ SET relationship.evidence_text = relationship_row.evidence_text
 async def save_document_node(
     client: Neo4jClient, document_id: str, source_file: str
 ) -> None:
-    """This saves the main document file name into our database so we can link everything back to it."""
+    """
+    Saves the main document source file info to link chunks back to it.
+    """
     query = """
     MERGE (document:Document {document_id: $document_id})
     SET document.source_file = $source_file
@@ -116,7 +119,9 @@ async def save_entity_nodes_and_relationships(
     client: Neo4jClient,
     graph_write_payload: dict[str, Any],
 ) -> None:
-    """This function saves all the best names and how they connect into our graph database, so we can search through them later."""
+    """
+    Saves canonical entities, mentions, and relationships to Neo4j.
+    """
     await client.execute_query(
         ENTITY_WRITE_QUERY, {"entities": graph_write_payload["entities"]}
     )
@@ -177,14 +182,14 @@ async def fetch_entity_neighbors_1hop(
     """
     Given a list of entity_ids (extracted from chunks), find all immediate
     (1-hop) relationships for those entities.
-    Returns: source canonical_name, relationship_type, target canonical_name, evidence_text.
+    Returns: source, rel_type, target, evidence_text.
     """
     if not entity_ids:
         return []
 
     query = """
     MATCH (source:Entity)-[r:RELATES_TO]->(target:Entity)
-    WHERE source.canonical_name IN $entity_ids OR target.canonical_name IN $entity_ids
+    WHERE source.entity_id IN $entity_ids OR target.entity_id IN $entity_ids
     RETURN 
         source.canonical_name AS source,
         r.relationship_type AS rel_type,

@@ -235,7 +235,7 @@ async def persist_document_graph(
 
 def build_ingestion_summary_response(
     contextualized_document: dict[str, Any], canonical_graph_payload: Any
-) -> dict[str, int | str]:
+) -> dict[str, Any]:
     """
     Builds the API response dict after ingestion.
 
@@ -271,7 +271,7 @@ async def get_neo4j_entities_by_document(
 async def ingest_document_graph(
     file_path: str,
     provider: Literal["MISTRAL_AI", "DEEPSEEK_AI"] = settings.DEFAULT_LLM_PROVIDER,
-) -> dict[str, int | str]:
+) -> dict[str, Any]:
     """
     Master orchestrator — runs the full document → Neo4j knowledge graph pipeline.
 
