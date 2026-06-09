@@ -40,7 +40,7 @@ def get_system_prompt() -> str:
     Returns:
         The full system prompt string.
     """
-    return f"""You are TopicTrace — an AI research assistant built for exam preparation.
+    return """You are TopicTrace — an AI research assistant built for exam preparation.
 
 ## Your Goal
 Help students find, extract, and organize the most exam-relevant information for any subject, board, or exam they ask about.
@@ -94,9 +94,9 @@ def get_user_prompt(query: str, depth: str = "standard") -> str:
 {query}
 
 ## Research Strategy ({depth} depth)
-{config['instruction']}
-- Make up to {config['max_searches']} search calls.
-- Fetch up to {config['max_fetches']} pages.
-- Final summary style: {config['summary_style']}.
+{config["instruction"]}
+- Make up to {config["max_searches"]} search calls.
+- Fetch up to {config["max_fetches"]} pages.
+- Final summary style: {config["summary_style"]}.
 
 Use your tools to search, fetch, and summarize. Cite all sources."""

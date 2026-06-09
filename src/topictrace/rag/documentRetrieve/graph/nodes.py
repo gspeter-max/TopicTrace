@@ -14,17 +14,15 @@ Business logic (classify_intent, grade_chunks, etc.) is unchanged.
 from langchain_core.runnables import RunnableConfig
 
 from topictrace import log, settings
-
 from topictrace.db.neo4j.cypherQuerys import retrieve_similar_chunks
+from topictrace.prompts.answer_generator import build_final_answer_prompt
 from topictrace.provider.embedding import embeddingModel
 from topictrace.provider.llm import get_llm
 from topictrace.provider.rerank import rerank_documents
-
-from topictrace.rag.documentRetrieve.graph.state import RAGState
-from topictrace.rag.documentRetrieve.router import classify_intent
 from topictrace.rag.documentRetrieve.grader import grade_chunks
+from topictrace.rag.documentRetrieve.graph.state import RAGState
 from topictrace.rag.documentRetrieve.graphAgent import gather_graph_facts
-from topictrace.prompts.answer_generator import build_final_answer_prompt
+from topictrace.rag.documentRetrieve.router import classify_intent
 
 
 def _get_neo4j_client(config: RunnableConfig):
@@ -44,6 +42,7 @@ def _extract_entity_ids(chunks: list[dict]) -> list[str]:
 
 # ── Node 1: route_query ───────────────────────────────────────────────────────
 
+
 async def route_query(state: RAGState) -> dict:
     """Classify the query as 'simple' or 'complex' using the LLM router."""
     intent = await classify_intent(state["query"])
@@ -53,6 +52,7 @@ async def route_query(state: RAGState) -> dict:
 
 # ── Node 2: vector_search ─────────────────────────────────────────────────────
 
+
 async def vector_search(state: RAGState, config: RunnableConfig) -> dict:
     """Embed the query and run vector similarity search in Neo4j."""
     client = _get_neo4j_client(config)
@@ -61,7 +61,7 @@ async def vector_search(state: RAGState, config: RunnableConfig) -> dict:
         api_key=settings.EMBEDDING_CONFIG.JINA_API_KEY,
         base_url=settings.EMBEDDING_CONFIG.JINA_BASE_URL,
         embeddingModel=settings.EMBEDDING_CONFIG.JINA_EMBEDDING_MODEL,
-        max_concurrency=settings.EMBEDDING_CONFIG.MAX_CONCURRENCY
+        max_concurrency=settings.EMBEDDING_CONFIG.MAX_CONCURRENCY,
     )
     query_embedding = await embedder.generateEmebedding(state["query"])
 
@@ -80,6 +80,7 @@ async def vector_search(state: RAGState, config: RunnableConfig) -> dict:
 
 # ── Node 3: grade_chunks ──────────────────────────────────────────────────────
 
+
 async def grade_chunks_node(state: RAGState) -> dict:
     """Grade whether vector chunks are sufficient to answer the query."""
     result = await grade_chunks(state["query"], state.get("vector_texts", []))
@@ -92,6 +93,7 @@ async def grade_chunks_node(state: RAGState) -> dict:
 
 
 # ── Node 4: graph_search ──────────────────────────────────────────────────────
+
 
 async def graph_search(state: RAGState, config: RunnableConfig) -> dict:
     """Traverse the Neo4j knowledge graph using entity IDs from vector chunks."""
@@ -116,6 +118,7 @@ async def graph_search(state: RAGState, config: RunnableConfig) -> dict:
 
 # ── Node 5: rerank ────────────────────────────────────────────────────────────
 
+
 async def rerank(state: RAGState) -> dict:
     """Rerank combined vector + graph context using Voyage AI."""
     context_to_rerank = list(state.get("vector_texts", []))
@@ -133,6 +136,7 @@ async def rerank(state: RAGState) -> dict:
 
 
 # ── Node 6: answer_node ───────────────────────────────────────────────────────
+
 
 async def answer_node(state: RAGState) -> dict:
     """
@@ -162,10 +166,12 @@ async def answer_node(state: RAGState) -> dict:
     try:
         llm = get_llm("MISTRAL_AI")
         bound_llm = llm.bind(temperature=0.0)
-        response = await bound_llm.ainvoke([
-            {"role": "system", "content": prompt},
-            {"role": "user", "content": state["query"]},
-        ])
+        response = await bound_llm.ainvoke(
+            [
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": state["query"]},
+            ]
+        )
         answer = response.content or "No answer generated."
     except Exception as e:
         log.error("Failed to generate final answer", error=str(e))

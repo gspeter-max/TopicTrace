@@ -13,14 +13,16 @@ These tests verify:
 - Items grouped correctly per page
 - Edge cases: empty text, None items, missing pages
 """
-from unittest.mock import MagicMock, patch, mock_open
-import pytest
 
-from topictrace.rag.documentIngestion.parseDocument import parse_document, get_all_pages_text
+from unittest.mock import MagicMock, mock_open, patch
 
-
+from topictrace.rag.documentIngestion.parseDocument import (
+    get_all_pages_text,
+    parse_document,
+)
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _make_text_page(page_number: int, text: str) -> MagicMock:
     """Build a fake TextPage with .page_number and .text."""
@@ -28,6 +30,7 @@ def _make_text_page(page_number: int, text: str) -> MagicMock:
     page.page_number = page_number
     page.text = text
     return page
+
 
 def _make_items_page(page_number: int) -> MagicMock:
     """Build a fake ItemsPage."""
@@ -55,13 +58,19 @@ def _make_client(api_result: MagicMock) -> MagicMock:
 
 # ── Tests: parse_document() ───────────────────────────────────────────────────
 
+
 def test_parse_document_uses_single_call_with_upload_file():
     """The API requires a single parsing.parse(upload_file=...) — no separate upload step."""
     api_result = _make_api_result([_make_text_page(1, "content")], [])
     client = _make_client(api_result)
 
-    with patch("topictrace.rag.documentIngestion.parseDocument._build_client", return_value=client), \
-         patch("builtins.open", mock_open(read_data=b"pdf bytes")):
+    with (
+        patch(
+            "topictrace.rag.documentIngestion.parseDocument._build_client",
+            return_value=client,
+        ),
+        patch("builtins.open", mock_open(read_data=b"pdf bytes")),
+    ):
         parse_document("some/file.pdf")
 
     client.files.create.assert_not_called()
@@ -73,13 +82,20 @@ def test_parse_document_passes_upload_file_kwarg():
     api_result = _make_api_result([_make_text_page(1, "content")], [])
     client = _make_client(api_result)
 
-    with patch("topictrace.rag.documentIngestion.parseDocument._build_client", return_value=client), \
-         patch("builtins.open", mock_open(read_data=b"bytes")):
+    with (
+        patch(
+            "topictrace.rag.documentIngestion.parseDocument._build_client",
+            return_value=client,
+        ),
+        patch("builtins.open", mock_open(read_data=b"bytes")),
+    ):
         parse_document("my_doc.pdf")
 
     parse_call_kwargs = client.parsing.parse.call_args[1]
     assert "upload_file" in parse_call_kwargs, "parse() must use upload_file= kwarg"
-    assert "file_id" not in parse_call_kwargs, "file_id= must not be used — no separate upload step"
+    assert "file_id" not in parse_call_kwargs, (
+        "file_id= must not be used — no separate upload step"
+    )
 
 
 def test_parse_document_requests_text_and_items_expand():
@@ -87,8 +103,13 @@ def test_parse_document_requests_text_and_items_expand():
     api_result = _make_api_result([_make_text_page(1, "content")], [])
     client = _make_client(api_result)
 
-    with patch("topictrace.rag.documentIngestion.parseDocument._build_client", return_value=client), \
-         patch("builtins.open", mock_open(read_data=b"bytes")):
+    with (
+        patch(
+            "topictrace.rag.documentIngestion.parseDocument._build_client",
+            return_value=client,
+        ),
+        patch("builtins.open", mock_open(read_data=b"bytes")),
+    ):
         parse_document("my_doc.pdf")
 
     parse_call_kwargs = client.parsing.parse.call_args[1]
@@ -104,8 +125,13 @@ def test_parse_document_uses_cost_effective_tier():
     api_result = _make_api_result([_make_text_page(1, "content")], [])
     client = _make_client(api_result)
 
-    with patch("topictrace.rag.documentIngestion.parseDocument._build_client", return_value=client), \
-         patch("builtins.open", mock_open(read_data=b"bytes")):
+    with (
+        patch(
+            "topictrace.rag.documentIngestion.parseDocument._build_client",
+            return_value=client,
+        ),
+        patch("builtins.open", mock_open(read_data=b"bytes")),
+    ):
         parse_document("my_doc.pdf")
 
     assert client.parsing.parse.call_args[1]["tier"] == "cost_effective"
@@ -113,12 +139,21 @@ def test_parse_document_uses_cost_effective_tier():
 
 def test_parse_document_returns_correct_number_of_pages():
     """One TextPage object in result → one page dict in output."""
-    text_pages = [_make_text_page(1, "p1"), _make_text_page(2, "p2"), _make_text_page(3, "p3")]
+    text_pages = [
+        _make_text_page(1, "p1"),
+        _make_text_page(2, "p2"),
+        _make_text_page(3, "p3"),
+    ]
     api_result = _make_api_result(text_pages, [])
     client = _make_client(api_result)
 
-    with patch("topictrace.rag.documentIngestion.parseDocument._build_client", return_value=client), \
-         patch("builtins.open", mock_open(read_data=b"bytes")):
+    with (
+        patch(
+            "topictrace.rag.documentIngestion.parseDocument._build_client",
+            return_value=client,
+        ),
+        patch("builtins.open", mock_open(read_data=b"bytes")),
+    ):
         pages = parse_document("doc.pdf")
 
     assert len(pages) == 3
@@ -130,8 +165,13 @@ def test_parse_document_page_numbers_come_from_text_page_object():
     api_result = _make_api_result(text_pages, [])
     client = _make_client(api_result)
 
-    with patch("topictrace.rag.documentIngestion.parseDocument._build_client", return_value=client), \
-         patch("builtins.open", mock_open(read_data=b"bytes")):
+    with (
+        patch(
+            "topictrace.rag.documentIngestion.parseDocument._build_client",
+            return_value=client,
+        ),
+        patch("builtins.open", mock_open(read_data=b"bytes")),
+    ):
         pages = parse_document("doc.pdf")
 
     assert pages[0]["page"] == 1
@@ -144,8 +184,13 @@ def test_parse_document_strips_whitespace_from_page_text():
     api_result = _make_api_result(text_pages, [])
     client = _make_client(api_result)
 
-    with patch("topictrace.rag.documentIngestion.parseDocument._build_client", return_value=client), \
-         patch("builtins.open", mock_open(read_data=b"bytes")):
+    with (
+        patch(
+            "topictrace.rag.documentIngestion.parseDocument._build_client",
+            return_value=client,
+        ),
+        patch("builtins.open", mock_open(read_data=b"bytes")),
+    ):
         pages = parse_document("doc.pdf")
 
     assert pages[0]["text"] == "some content"
@@ -158,8 +203,13 @@ def test_parse_document_attaches_items_page_to_correct_page():
     api_result = _make_api_result(text_pages, [items_page_2])
     client = _make_client(api_result)
 
-    with patch("topictrace.rag.documentIngestion.parseDocument._build_client", return_value=client), \
-         patch("builtins.open", mock_open(read_data=b"bytes")):
+    with (
+        patch(
+            "topictrace.rag.documentIngestion.parseDocument._build_client",
+            return_value=client,
+        ),
+        patch("builtins.open", mock_open(read_data=b"bytes")),
+    ):
         pages = parse_document("doc.pdf")
 
     assert pages[0]["items"] == [], "Page 1 must have no items"
@@ -172,8 +222,13 @@ def test_parse_document_page_with_no_items_gets_empty_list():
     api_result = _make_api_result(text_pages, [])
     client = _make_client(api_result)
 
-    with patch("topictrace.rag.documentIngestion.parseDocument._build_client", return_value=client), \
-         patch("builtins.open", mock_open(read_data=b"bytes")):
+    with (
+        patch(
+            "topictrace.rag.documentIngestion.parseDocument._build_client",
+            return_value=client,
+        ),
+        patch("builtins.open", mock_open(read_data=b"bytes")),
+    ):
         pages = parse_document("doc.pdf")
 
     assert pages[0]["items"] == []
@@ -186,8 +241,13 @@ def test_parse_document_handles_no_text_in_response():
     api_result.items = None
     client = _make_client(api_result)
 
-    with patch("topictrace.rag.documentIngestion.parseDocument._build_client", return_value=client), \
-         patch("builtins.open", mock_open(read_data=b"bytes")):
+    with (
+        patch(
+            "topictrace.rag.documentIngestion.parseDocument._build_client",
+            return_value=client,
+        ),
+        patch("builtins.open", mock_open(read_data=b"bytes")),
+    ):
         pages = parse_document("doc.pdf")
 
     assert pages == []
@@ -199,8 +259,13 @@ def test_parse_document_each_page_dict_has_required_keys():
     api_result = _make_api_result(text_pages, [])
     client = _make_client(api_result)
 
-    with patch("topictrace.rag.documentIngestion.parseDocument._build_client", return_value=client), \
-         patch("builtins.open", mock_open(read_data=b"bytes")):
+    with (
+        patch(
+            "topictrace.rag.documentIngestion.parseDocument._build_client",
+            return_value=client,
+        ),
+        patch("builtins.open", mock_open(read_data=b"bytes")),
+    ):
         pages = parse_document("doc.pdf")
 
     for i, page in enumerate(pages):
@@ -210,6 +275,7 @@ def test_parse_document_each_page_dict_has_required_keys():
 
 
 # ── Tests: get_all_pages_text() ───────────────────────────────────────────────
+
 
 def test_get_all_pages_text_formats_with_page_headers():
     pages = [
@@ -232,7 +298,10 @@ def test_get_all_pages_text_preserves_all_page_content():
 
 
 def test_get_all_pages_text_separates_pages_with_blank_line():
-    pages = [{"page": 1, "text": "p1", "items": []}, {"page": 2, "text": "p2", "items": []}]
+    pages = [
+        {"page": 1, "text": "p1", "items": []},
+        {"page": 2, "text": "p2", "items": []},
+    ]
     assert "\n\n" in get_all_pages_text(pages)
 
 

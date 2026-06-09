@@ -4,7 +4,6 @@ Tests for topictrace.rag.documentIngestion.chunking.recursive.
 
 from topictrace.rag.documentIngestion.chunking import chunk_document, count_tokens
 
-
 SIMPLE_TEXT = "Hello world. " * 100
 MULTI_PARAGRAPH_TEXT = (
     "This is paragraph one. " * 30

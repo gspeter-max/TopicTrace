@@ -1,18 +1,24 @@
 """Web fetch tool for TopicTrace using Jina Reader + LLM summarization."""
 
 import asyncio
+
 import httpx
 from langchain_core.tools import tool
-from topictrace import settings, log
-from topictrace.tools.cache import save_to_cache, load_from_cache, generate_fetch_cache_key
+
+from topictrace import log, settings
 from topictrace.provider.llm import get_llm
+from topictrace.tools.cache import (
+    generate_fetch_cache_key,
+    load_from_cache,
+    save_to_cache,
+)
 
 
 @tool
 async def web_fetch(url, query: str) -> list[dict]:
     """Fetch URLs via Jina Reader, summarize with LLM, cache results.
 
-    Args: 
+    Args:
         url: A single URL string or a list of URLs.
         query: The original research query (used for cache key and summarization).
 
@@ -26,9 +32,7 @@ async def web_fetch(url, query: str) -> list[dict]:
     elif isinstance(url, list):
         urls = url
     else:
-        error_message = (
-            f"url parameter must be str or list, got {type(url).__name__}"
-        )
+        error_message = f"url parameter must be str or list, got {type(url).__name__}"
         log.warning("invalid_input", error=error_message)
         return [{"url": "", "status": "error", "content": error_message}]
 
@@ -39,11 +43,9 @@ async def web_fetch(url, query: str) -> list[dict]:
         uncached_urls = []  # list of (url, cache_key) tuples
         for u in urls:
             if not u or not u.strip():
-                results.append({
-                    "url": u,
-                    "status": "error",
-                    "content": "URL cannot be empty"
-                })
+                results.append(
+                    {"url": u, "status": "error", "content": "URL cannot be empty"}
+                )
                 continue
 
             cache_key = generate_fetch_cache_key(query, u)
@@ -70,11 +72,13 @@ async def web_fetch(url, query: str) -> list[dict]:
             # Handle network-level exceptions (timeout, connection error, etc.)
             if isinstance(http_response, Exception):
                 log.warning("fetch_failed", url=u, error=str(http_response))
-                results.append({
-                    "url": u,
-                    "status": "error",
-                    "content": f"Request failed: {http_response}"
-                })
+                results.append(
+                    {
+                        "url": u,
+                        "status": "error",
+                        "content": f"Request failed: {http_response}",
+                    }
+                )
                 continue
 
             # Handle non-200 status codes (451, 403, 404, etc.)
@@ -84,31 +88,33 @@ async def web_fetch(url, query: str) -> list[dict]:
                     url=u,
                     status_code=http_response.status_code,
                 )
-                results.append({
-                    "url": u,
-                    "status": http_response.status_code,
-                    "content": None,
-                })
+                results.append(
+                    {
+                        "url": u,
+                        "status": http_response.status_code,
+                        "content": None,
+                    }
+                )
                 continue
             content = http_response.text
 
             messages = [
-                    {
-                        "role": "system",
-                        "content": (
-                            "You are a summarization assistant. "
-                            "Summarize the provided content in relation to the user's query. "
-                            "Be concise, factual, and focus on exam-relevant information. "
-                            "Output only the summary, no preamble."
-                        )
-                    },
-                    {
-                        "role": "user",
-                        "content": (
-                            f"Query: {query}\n\n"
-                            f"Content to summarize:\n{content[:settings.SUMMARIZE_MAX_INPUT_CHARS]}"
-                        )
-                    }
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a summarization assistant. "
+                        "Summarize the provided content in relation to the user's query. "
+                        "Be concise, factual, and focus on exam-relevant information. "
+                        "Output only the summary, no preamble."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        f"Query: {query}\n\n"
+                        f"Content to summarize:\n{content[: settings.SUMMARIZE_MAX_INPUT_CHARS]}"
+                    ),
+                },
             ]
             llm = get_llm()
             llm_response = await llm.ainvoke(messages)
@@ -122,11 +128,19 @@ async def web_fetch(url, query: str) -> list[dict]:
         results.append({"url": "", "status": "error", "content": f"HTTP error: {e}"})
     except OSError as e:
         log.error("os_error", error=str(e))
-        results.append({"url": "", "status": "error", "content": f"File system error: {e}"})
+        results.append(
+            {"url": "", "status": "error", "content": f"File system error: {e}"}
+        )
     except Exception as e:
         log.error("unexpected_error", error=str(e))
-        results.append({"url": "", "status": "error", "content": f"Unexpected error: {e}"})
+        results.append(
+            {"url": "", "status": "error", "content": f"Unexpected error: {e}"}
+        )
     finally:
-        log.info("fetch_batch_complete", total=len(urls), success=sum(1 for r in results if r["status"] == 200))
+        log.info(
+            "fetch_batch_complete",
+            total=len(urls),
+            success=sum(1 for r in results if r["status"] == 200),
+        )
 
     return results

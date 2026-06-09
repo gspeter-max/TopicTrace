@@ -1,18 +1,17 @@
 import asyncio
-from types import SimpleNamespace
 
 import pytest
 import respx
 from httpx import Response
+from langchain_core.messages import AIMessage
 from openai import APIStatusError
 
 import topictrace.rag.documentIngestion.contextual_retrieval as module
+from topictrace.provider.llm import get_llm
 from topictrace.rag.documentIngestion.contextual_retrieval import (
     build_contextualized_document,
     generate_chunk_context,
 )
-from topictrace.provider.llm import get_llm
-from langchain_core.messages import AIMessage
 
 
 class FakeBoundClient:
@@ -30,7 +29,9 @@ class FakeClient:
         self.model_name = "test-model"
 
     def bind(self, **kwargs):
-        return FakeBoundClient(self.content, model_name=kwargs.get("model", self.model_name))
+        return FakeBoundClient(
+            self.content, model_name=kwargs.get("model", self.model_name)
+        )
 
 
 def test_validation_happy_path():
@@ -52,7 +53,9 @@ def test_validation_happy_path():
     )
 
     assert result["context"] == "This chunk describes the work experience section."
-    assert result["contextualized_text"].startswith("This chunk describes the work experience section.")
+    assert result["contextualized_text"].startswith(
+        "This chunk describes the work experience section."
+    )
 
 
 def test_validation_invalid_input_is_captured():
@@ -109,7 +112,9 @@ def test_validation_api_failure_is_captured(monkeypatch):
         )
     )
 
-    monkeypatch.setattr("topictrace.settings.LLM_CONFIG.MISTRAL_AI.LLM_API_KEY", "test-key")
+    monkeypatch.setattr(
+        "topictrace.settings.LLM_CONFIG.MISTRAL_AI.LLM_API_KEY", "test-key"
+    )
     client = get_llm("MISTRAL_AI")
     chunk = {
         "chunk_index": 2,
@@ -134,7 +139,11 @@ def test_validation_empty_document_is_captured(monkeypatch):
 
     monkeypatch.setattr(module, "parse_document", lambda file_path: [{"pages": []}])
     monkeypatch.setattr(module, "get_all_pages_text", lambda parsed: "")
-    monkeypatch.setattr(module, "chunk_document", lambda text, document_id, chunk_size=512, chunk_overlap=100: [])
+    monkeypatch.setattr(
+        module,
+        "chunk_document",
+        lambda text, document_id, chunk_size=512, chunk_overlap=100: [],
+    )
 
     client = FakeClient("unused")
     result = asyncio.run(
@@ -153,7 +162,9 @@ def test_validation_expected_load_is_captured(monkeypatch):
     monkeypatch.setattr(
         module,
         "parse_document",
-        lambda file_path: [{"pages": [{"page": 1, "text": "page text", "md": "page md"}]}],
+        lambda file_path: [
+            {"pages": [{"page": 1, "text": "page text", "md": "page md"}]}
+        ],
     )
     monkeypatch.setattr(module, "get_all_pages_text", lambda parsed: "page text")
     monkeypatch.setattr(

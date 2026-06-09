@@ -1,9 +1,12 @@
-from pydantic import BaseModel
 from typing import Literal
 
-class ResearchRequest( BaseModel ):
-    query : str 
-    depth : Literal["quick", "standard", "deep"] = "quick"
+from pydantic import BaseModel
 
-class ResearchResponse( BaseModel ):
-    answer : str 
+
+class ResearchRequest(BaseModel):
+    query: str
+    depth: Literal["quick", "standard", "deep"] = "quick"
+
+
+class ResearchResponse(BaseModel):
+    answer: str

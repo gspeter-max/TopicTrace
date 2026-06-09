@@ -15,17 +15,19 @@ structlog.configure(
     processors=[
         structlog.contextvars.merge_contextvars,
         structlog.stdlib.add_log_level,
-        CallsiteParameterAdder({
-            CallsiteParameter.FILENAME,
-            CallsiteParameter.FUNC_NAME,
-            CallsiteParameter.LINENO,
-        }),
+        CallsiteParameterAdder(
+            {
+                CallsiteParameter.FILENAME,
+                CallsiteParameter.FUNC_NAME,
+                CallsiteParameter.LINENO,
+            }
+        ),
         structlog.processors.TimeStamper(fmt="%H:%M:%S", utc=False),
         structlog.dev.ConsoleRenderer(
             colors=True,
             force_colors=True,
             pad_event_to=40,
-        )
+        ),
     ],
 )
 

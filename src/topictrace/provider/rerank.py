@@ -5,8 +5,11 @@ Calls https://api.voyageai.com/v1/rerank (rerank-2 model),
 sorts results by relevance_score descending, returns top_k strings.
 Uses httpx.AsyncClient for native async HTTP calls.
 """
+
 import httpx
+
 from topictrace import settings
+
 
 async def rerank_documents(
     query: str,
@@ -14,7 +17,6 @@ async def rerank_documents(
     top_k: int = 5,
     api_key: str | None = None,
 ) -> list[str]:
-
     """
     Async wrapper around the Voyage rerank API.
 
@@ -44,7 +46,9 @@ async def rerank_documents(
     }
 
     async with httpx.AsyncClient() as client:
-        response = await client.post(settings.RERANKER_CONFIG.VOYAGE_RERANK_URL, headers=headers, json=payload)
+        response = await client.post(
+            settings.RERANKER_CONFIG.VOYAGE_RERANK_URL, headers=headers, json=payload
+        )
         response.raise_for_status()
 
     data = response.json()

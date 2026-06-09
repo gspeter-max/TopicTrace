@@ -1,8 +1,10 @@
 """Cache system for web_fetch with 20-minute TTL."""
 
-import hashlib
 import datetime
+import hashlib
+
 from psycopg.types.json import Json
+
 from topictrace import log, settings
 from topictrace.db.postgres.client import pool
 
@@ -31,9 +33,11 @@ def load_from_cache(cache_key: str) -> str | None:
         return None
 
 
-def save_to_cache(cache_key: str, result: str, ttl: int = settings.CACHE_TTL_SECONDS) -> None:
+def save_to_cache(
+    cache_key: str, result: str, ttl: int = settings.CACHE_TTL_SECONDS
+) -> None:
     """Save cache to database. result stored as JSONB (wrapped in dict)."""
-    expires_at = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=ttl)
+    expires_at = datetime.datetime.now(datetime.UTC) + datetime.timedelta(seconds=ttl)
     try:
         with pool.connection() as conn:
             with conn.cursor() as cur:

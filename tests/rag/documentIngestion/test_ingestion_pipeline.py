@@ -28,12 +28,30 @@ def _common_monkeypatches(monkeypatch, recorded_stage_names, doc_return):
     async def fake_persist_document_graph(*args, **kwargs):
         recorded_stage_names.append("persist")
 
-    monkeypatch.setattr("topictrace.rag.documentIngestion.ingestion.build_contextualized_document", fake_build_contextualized_document)
-    monkeypatch.setattr("topictrace.rag.documentIngestion.ingestion.build_contextualized_chunk_embeddings", fake_build_contextualized_chunk_embeddings)
-    monkeypatch.setattr("topictrace.rag.documentIngestion.ingestion.extract_chunk_graph_data_in_parallel", fake_extract_chunk_graph_data_in_parallel)
-    monkeypatch.setattr("topictrace.rag.documentIngestion.ingestion.get_neo4j_entities_by_document", fake_get_neo4j_entities_by_document)
-    monkeypatch.setattr("topictrace.rag.documentIngestion.ingestion.resolve_entities_for_graph", fake_resolve_entities_for_graph)
-    monkeypatch.setattr("topictrace.rag.documentIngestion.ingestion.persist_document_graph", fake_persist_document_graph)
+    monkeypatch.setattr(
+        "topictrace.rag.documentIngestion.ingestion.build_contextualized_document",
+        fake_build_contextualized_document,
+    )
+    monkeypatch.setattr(
+        "topictrace.rag.documentIngestion.ingestion.build_contextualized_chunk_embeddings",
+        fake_build_contextualized_chunk_embeddings,
+    )
+    monkeypatch.setattr(
+        "topictrace.rag.documentIngestion.ingestion.extract_chunk_graph_data_in_parallel",
+        fake_extract_chunk_graph_data_in_parallel,
+    )
+    monkeypatch.setattr(
+        "topictrace.rag.documentIngestion.ingestion.get_neo4j_entities_by_document",
+        fake_get_neo4j_entities_by_document,
+    )
+    monkeypatch.setattr(
+        "topictrace.rag.documentIngestion.ingestion.resolve_entities_for_graph",
+        fake_resolve_entities_for_graph,
+    )
+    monkeypatch.setattr(
+        "topictrace.rag.documentIngestion.ingestion.persist_document_graph",
+        fake_persist_document_graph,
+    )
 
 
 def test_ingest_document_graph_runs_all_pipeline_stages(monkeypatch):

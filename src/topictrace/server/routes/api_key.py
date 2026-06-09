@@ -1,7 +1,8 @@
 import secrets
 
 from fastapi import APIRouter
-from topictrace.db.postgres.client import pool, generate_key_hash
+
+from topictrace.db.postgres.client import generate_key_hash, pool
 
 router = APIRouter()
 

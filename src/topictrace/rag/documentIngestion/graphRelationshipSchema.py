@@ -13,6 +13,5 @@ ALLOWED_RELATIONSHIP_TYPES = [
 def get_relationship_schema_prompt_text() -> str:
     """This gives us the exact list of allowed connections as text, so we can tell the AI exactly what words to use when connecting things."""
     return "\n".join(
-        f"- {relationship_type}"
-        for relationship_type in ALLOWED_RELATIONSHIP_TYPES
+        f"- {relationship_type}" for relationship_type in ALLOWED_RELATIONSHIP_TYPES
     )

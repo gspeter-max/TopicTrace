@@ -6,20 +6,15 @@ to classify the intent as either "simple" or "complex".
 No keywords or regex, pure LLM routing.
 Defaults to "simple" on failure.
 """
+
 import json
-from topictrace import log
 from typing import Literal
 
-from topictrace.provider.llm import get_llm
+from topictrace import log
 from topictrace.prompts.router_intent_classifier import ROUTER_PROMPT
-
-
-
+from topictrace.provider.llm import get_llm
 
 IntentType = Literal["simple", "complex"]
-
-
-
 
 
 async def classify_intent(query: str) -> IntentType:
@@ -36,10 +31,12 @@ async def classify_intent(query: str) -> IntentType:
         llm = get_llm("MISTRAL_AI")
         bound_llm = llm.bind(response_format={"type": "json_object"}, temperature=0.0)
 
-        response = await bound_llm.ainvoke([
-            {"role": "system", "content": ROUTER_PROMPT},
-            {"role": "user", "content": query},
-        ])
+        response = await bound_llm.ainvoke(
+            [
+                {"role": "system", "content": ROUTER_PROMPT},
+                {"role": "user", "content": query},
+            ]
+        )
 
         content = response.content
         if not content:
@@ -52,7 +49,10 @@ async def classify_intent(query: str) -> IntentType:
         if intent in ("simple", "complex"):
             return intent  # type: ignore
 
-        log.warning("Router received unexpected intent, defaulting to 'simple'", parsed_intent=intent)
+        log.warning(
+            "Router received unexpected intent, defaulting to 'simple'",
+            parsed_intent=intent,
+        )
         return "simple"
 
     except Exception as e:

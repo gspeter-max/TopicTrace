@@ -8,17 +8,10 @@ the final state back to QueryResponse.
 All pipeline logic lives in documentRetrieve/graph/.
 """
 
-
-from topictrace import log, settings
+from topictrace import settings
 from topictrace.db.neo4j import Neo4jClient
-
-
-from topictrace.server.schemas.rag.retrieveModels import QueryRequest, QueryResponse
-
 from topictrace.rag.documentRetrieve.graph.build_graph import build_rag_graph
-
-
-
+from topictrace.server.schemas.rag.retrieveModels import QueryRequest, QueryResponse
 
 # Build the graph once at module load — it is stateless and reusable
 _rag_graph = build_rag_graph()

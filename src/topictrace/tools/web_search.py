@@ -1,9 +1,11 @@
 """Web search tool for TopicTrace using Tavily API."""
 
 import asyncio
+
+from langchain_core.tools import tool
 from tavily import AsyncTavilyClient
-from topictrace import settings, log
-from langchain_core.tools import tool 
+
+from topictrace import log, settings
 
 
 def _extract_single_result(item: dict) -> dict:
@@ -11,8 +13,9 @@ def _extract_single_result(item: dict) -> dict:
     return {
         "title": item.get("title", "No Title"),
         "url": item.get("url", ""),
-        "snippet": item.get("content", "")[:settings.SEARCH_SNIPPET_MAX_CHARS],
+        "snippet": item.get("content", "")[: settings.SEARCH_SNIPPET_MAX_CHARS],
     }
+
 
 @tool
 async def web_search(query: str | list[str]) -> list[dict]:
@@ -27,7 +30,9 @@ async def web_search(query: str | list[str]) -> list[dict]:
     if isinstance(query, str):
         query = [query]
     elif not isinstance(query, list):
-        error_message = f"query parameter must be str or list, got {type(query).__name__}"
+        error_message = (
+            f"query parameter must be str or list, got {type(query).__name__}"
+        )
         log.warning("invalid_input", error=error_message)
         return [{"title": "", "url": "", "snippet": error_message}]
 
@@ -46,19 +51,27 @@ async def web_search(query: str | list[str]) -> list[dict]:
             tasks = [
                 client.search(query=q, max_results=settings.SEARCH_MAX_RESULTS)
                 for q in query
-            ] 
+            ]
             responses = await asyncio.gather(*tasks, return_exceptions=True)
 
         for i, response in enumerate(responses):
             if isinstance(response, Exception):
                 log.warning("search_failed", query=query[i], error=str(response))
-                search_results.append({"title": "", "url": "", "snippet": f"Request failed: {response}"})
+                search_results.append(
+                    {"title": "", "url": "", "snippet": f"Request failed: {response}"}
+                )
                 continue
 
             results_list = response.get("results", [])
             if not results_list:
                 log.warning("search_no_results", query=query[i])
-                search_results.append({"title": "", "url": "", "snippet": f"No results found for: {query[i]}"})
+                search_results.append(
+                    {
+                        "title": "",
+                        "url": "",
+                        "snippet": f"No results found for: {query[i]}",
+                    }
+                )
                 continue
 
             for result_item in results_list:
@@ -69,7 +82,9 @@ async def web_search(query: str | list[str]) -> list[dict]:
 
     except Exception as e:
         log.error("unexpected_error", error=str(e))
-        search_results.append({"title": "", "url": "", "snippet": f"Unexpected error: {e}"})
+        search_results.append(
+            {"title": "", "url": "", "snippet": f"Unexpected error: {e}"}
+        )
     finally:
         log.info(
             "search_batch_complete",

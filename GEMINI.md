@@ -138,3 +138,17 @@ tests/
         ├── run_retrieve_real_env_test.py
         └── test_run_real_env_test.py
 ```
+
+## Development & Linting Guidelines
+Before committing any changes, you MUST run type checking and linting/formatting:
+
+1. **Pyright Type Checking**:
+   ```bash
+   .venv/bin/pyright
+   ```
+
+2. **Ruff Linting & Formatting**:
+   ```bash
+   .venv/bin/ruff check . --fix
+   .venv/bin/ruff format .
+   ```

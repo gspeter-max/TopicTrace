@@ -14,19 +14,22 @@ Graph topology:
                                                                        ↓
                                                                       END
 """
-from langgraph.graph import StateGraph, START, END
 
-from topictrace.rag.documentRetrieve.graph.state import RAGState
+from langgraph.graph import END, START, StateGraph
+
+from topictrace.rag.documentRetrieve.graph.edges import (
+    route_after_grader,
+    route_after_vector_search,
+)
 from topictrace.rag.documentRetrieve.graph.nodes import (
-    route_query,
-    vector_search,
+    answer_node,
     grade_chunks_node,
     graph_search,
     rerank,
-    answer_node,
+    route_query,
+    vector_search,
 )
-from topictrace.rag.documentRetrieve.graph.edges import route_after_vector_search, route_after_grader
-
+from topictrace.rag.documentRetrieve.graph.state import RAGState
 
 
 def build_rag_graph():

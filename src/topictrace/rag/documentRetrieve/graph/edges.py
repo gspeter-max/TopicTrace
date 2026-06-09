@@ -4,12 +4,15 @@ Conditional edge functions for the RAG LangGraph.
 Each function receives the current state and returns the NAME of the next
 node to route to. LangGraph uses these to determine the path at runtime.
 """
+
 from typing import Literal
+
 from topictrace.rag.documentRetrieve.graph.state import RAGState
 
 
-
-def route_after_vector_search(state: RAGState) -> Literal["grade_chunks", "graph_search"]:
+def route_after_vector_search(
+    state: RAGState,
+) -> Literal["grade_chunks", "graph_search"]:
     """
     After vector search:
     - complex queries go straight to graph_search

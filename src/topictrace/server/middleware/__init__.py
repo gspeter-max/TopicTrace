@@ -1,16 +1,16 @@
-import uuid
 import time
+import uuid
 from collections import defaultdict
-import structlog.contextvars
 
+import structlog.contextvars
 from fastapi import Request
 from fastapi.exceptions import HTTPException
-from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
-from topictrace.server.app import app
-from topictrace.db.postgres.client import pool, generate_key_hash
 from topictrace import log
+from topictrace.db.postgres.client import generate_key_hash, pool
+from topictrace.server.app import app
 
 # ---------------------------------------------------------------------------
 # Request ID tracing
@@ -43,7 +43,9 @@ async def rate_limit(request: Request, call_next):
     client_host = request.client.host
     now = time.time()
 
-    _rate_limit_dict[client_host] = [rt for rt in _rate_limit_dict[client_host] if (now - rt) < 60]
+    _rate_limit_dict[client_host] = [
+        rt for rt in _rate_limit_dict[client_host] if (now - rt) < 60
+    ]
     if len(_rate_limit_dict[client_host]) >= 10:
         raise HTTPException(status_code=429, detail="rate limit exceeds")
 
@@ -78,7 +80,9 @@ async def authenticate(request: Request, call_next):
 
     auth_header = request.headers.get("authorization")
     if not auth_header:
-        return JSONResponse(status_code=401, content={"detail": "Missing Authorization header"})
+        return JSONResponse(
+            status_code=401, content={"detail": "Missing Authorization header"}
+        )
 
     api_key = auth_header.removeprefix("Bearer ").strip()
     if not api_key:

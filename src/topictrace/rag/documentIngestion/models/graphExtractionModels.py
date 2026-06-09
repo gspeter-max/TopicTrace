@@ -1,6 +1,11 @@
-from typing import Any, Dict, List
+from typing import Any
+
 from pydantic import BaseModel, field_validator
-from topictrace.rag.documentIngestion.graphRelationshipSchema import ALLOWED_RELATIONSHIP_TYPES
+
+from topictrace.rag.documentIngestion.graphRelationshipSchema import (
+    ALLOWED_RELATIONSHIP_TYPES,
+)
+
 
 class ExtractedEntity(BaseModel):
     entity_name: str
@@ -14,6 +19,7 @@ class ExtractedEntity(BaseModel):
         if not v or not v.strip():
             raise ValueError("evidence_text cannot be empty")
         return v
+
 
 class ExtractedRelationship(BaseModel):
     source_entity_name: str
@@ -29,18 +35,22 @@ class ExtractedRelationship(BaseModel):
             return "RELATED_TO"
         return v
 
+
 class ChunkGraphExtractionResult(BaseModel):
-    entities: List[ExtractedEntity]
-    relationships: List[ExtractedRelationship]
+    entities: list[ExtractedEntity]
+    relationships: list[ExtractedRelationship]
+
 
 class CanonicalGraphPersistencePayload(BaseModel):
-    entities: List[Dict[str, Any]]
-    relationships: List[Dict[str, Any]]
+    entities: list[dict[str, Any]]
+    relationships: list[dict[str, Any]]
+
 
 class EntityResolutionDecision(BaseModel):
     left_name: str
     right_name: str
     canonical_name: str
+
 
 RawGraphEntity = ExtractedEntity
 RawGraphRelationship = ExtractedRelationship

@@ -1,6 +1,8 @@
 import hashlib
+
 from psycopg_pool import ConnectionPool
-from topictrace import settings, log
+
+from topictrace import log, settings
 
 pool = ConnectionPool(settings.DATABASE_URL, min_size=4, max_size=10)
 

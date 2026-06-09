@@ -4,15 +4,15 @@ Ingestion API endpoints.
 This file only contains the FastAPI route definitions.
 All business logic lives in src/documentIngestion/ingestion.py.
 """
-from topictrace import log
+
 from fastapi import APIRouter
 
-from topictrace.server.schemas.rag.ingestionModels import IngestionRequest, IngestionResponse
-
+from topictrace import log
 from topictrace.rag.documentIngestion.ingestion import ingest_document_graph
-
-
-
+from topictrace.server.schemas.rag.ingestionModels import (
+    IngestionRequest,
+    IngestionResponse,
+)
 
 ingestionRouter = APIRouter(prefix="/ingestion", tags=["Ingestion"])
 

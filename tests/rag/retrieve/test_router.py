@@ -2,6 +2,7 @@
 Task 3: Tests for the LLM-based query intent router.
 All LLM calls are mocked.
 """
+
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -10,14 +11,15 @@ from langchain_core.messages import AIMessage
 
 from topictrace.rag.documentRetrieve.router import classify_intent
 
-
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _make_llm_response(content: str):
     return AIMessage(content=content)
 
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.anyio
 async def test_router_returns_simple_for_simple_query():
@@ -48,7 +50,9 @@ async def test_router_returns_complex_for_complex_query():
         mock_llm.bind.return_value = mock_bound_llm
         mock_get_llm.return_value = mock_llm
 
-        result = await classify_intent("How does the AI team relate to the product team?")
+        result = await classify_intent(
+            "How does the AI team relate to the product team?"
+        )
 
     assert result == "complex"
 

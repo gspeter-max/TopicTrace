@@ -1,50 +1,22 @@
 import hashlib
-import logging
-from typing import Any
 from collections import defaultdict
-from topictrace import log 
+from typing import Any
+
+from topictrace import log
 from topictrace.rag.documentIngestion.models.graphExtractionModels import (
-    ChunkGraphExtractionResult,
     CanonicalGraphPersistencePayload,
+    ChunkGraphExtractionResult,
 )
+
 
 def generate_stable_entity_id(name: str) -> str:
     """Converts an entity canonical name into a stable 12-character hex ID."""
-    
+
     if not name or not name.strip():
         raise ValueError("Entity name must not be empty when generating a stable ID.")
 
     normalized_name = " ".join(name.lower().strip().split())
     return hashlib.sha256(normalized_name.encode()).hexdigest()[:12]
-
-
-def _invert_canonical_map(
-    canonical_name_by_raw_name: dict[str, list[str]],
-) -> dict[str, str]:
-    """Inverts the resolution map produced by resolve_entities_for_graph."""
-    raw_to_canonical: dict[str, str] = {}
-
-    for canonical_name, raw_names in canonical_name_by_raw_name.items():
-        if not isinstance(canonical_name, str) or not canonical_name.strip():
-            log.warning(
-                "Skipping invalid canonical name in resolution map: %r",
-                canonical_name,
-            )
-            continue
-
-        raw_to_canonical[canonical_name] = canonical_name
-
-        for raw_name in raw_names:
-            if not isinstance(raw_name, str) or not raw_name.strip():
-                log.warning(
-                    "Skipping invalid raw name under canonical %r: %r",
-                    canonical_name,
-                    raw_name,
-                )
-                continue
-            raw_to_canonical[raw_name] = canonical_name
-
-    return raw_to_canonical
 
 
 def rewrite_graph_results_to_canonical_entities(
@@ -213,7 +185,9 @@ def build_neo4j_graph_write_payload(
         ValueError: If document_id is empty.
     """
     if not document_id or not document_id.strip():
-        raise ValueError("document_id must not be empty when building the graph payload.")
+        raise ValueError(
+            "document_id must not be empty when building the graph payload."
+        )
 
     unique_entities: dict[str, dict[str, Any]] = {}
     mentions: list[dict[str, Any]] = []
@@ -252,7 +226,9 @@ def build_neo4j_graph_write_payload(
     chunk_to_entity_ids: dict[str, list[str]] = {
         k: list(v) for k, v in _chunk_to_entity_ids.items()
     }
-    merged_relationships = merge_duplicate_relationship_payloads(rewritten_relationships)
+    merged_relationships = merge_duplicate_relationship_payloads(
+        rewritten_relationships
+    )
 
     log.debug(
         "Built graph payload for document %r: %d unique entities, %d mentions, %d relationships.",

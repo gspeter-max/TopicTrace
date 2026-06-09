@@ -1,14 +1,15 @@
 import asyncio
+
 import pytest
 import respx
 from httpx import Response
 from openai import APIStatusError
 
 from topictrace import settings
+from topictrace.provider.llm import get_llm
 from topictrace.rag.documentIngestion.contextual_retrieval import (
     generate_chunk_context,
 )
-from topictrace.provider.llm import get_llm
 
 
 @respx.mock
@@ -35,7 +36,9 @@ def test_generate_chunk_context_with_realistic_openai_shape(monkeypatch):
         )
     )
 
-    monkeypatch.setattr("topictrace.settings.LLM_CONFIG.MISTRAL_AI.LLM_API_KEY", "test-key")
+    monkeypatch.setattr(
+        "topictrace.settings.LLM_CONFIG.MISTRAL_AI.LLM_API_KEY", "test-key"
+    )
     client = get_llm("MISTRAL_AI")
     chunk = {
         "chunk_index": 0,
@@ -55,13 +58,25 @@ def test_generate_chunk_context_with_realistic_openai_shape(monkeypatch):
 
     assert route.called
     assert result["context"] == "This chunk is part of the work experience section."
-    assert result["contextualized_text"].startswith("This chunk is part of the work experience section.")
+    assert result["contextualized_text"].startswith(
+        "This chunk is part of the work experience section."
+    )
 
 
 @pytest.mark.integration
 def test_real_mistral_smoke():
-    api_key = settings.LLM_CONFIG.MISTRAL_AI.LLM_API_KEY or settings.LLM_CONFIG.DEEPSEEK_AI.LLM_API_KEY
-    if not api_key or api_key.lower() in {"test", "test-key", "dummy", "placeholder", "missing_key", "mistral_api_key"}:
+    api_key = (
+        settings.LLM_CONFIG.MISTRAL_AI.LLM_API_KEY
+        or settings.LLM_CONFIG.DEEPSEEK_AI.LLM_API_KEY
+    )
+    if not api_key or api_key.lower() in {
+        "test",
+        "test-key",
+        "dummy",
+        "placeholder",
+        "missing_key",
+        "mistral_api_key",
+    }:
         pytest.skip("MISTRAL_API_KEY is not configured with a real value in settings")
 
     client = get_llm("MISTRAL_AI")
@@ -115,7 +130,9 @@ def test_generate_chunk_context_with_realistic_deepseek_shape(monkeypatch):
         )
     )
 
-    monkeypatch.setattr("topictrace.settings.LLM_CONFIG.DEEPSEEK_AI.LLM_API_KEY", "test-key")
+    monkeypatch.setattr(
+        "topictrace.settings.LLM_CONFIG.DEEPSEEK_AI.LLM_API_KEY", "test-key"
+    )
     client = get_llm("DEEPSEEK_AI")
     chunk = {
         "chunk_index": 0,
@@ -134,15 +151,29 @@ def test_generate_chunk_context_with_realistic_deepseek_shape(monkeypatch):
     )
 
     assert route.called
-    assert result["context"] == "This chunk is part of the work experience section from DeepSeek."
-    assert result["contextualized_text"].startswith("This chunk is part of the work experience section from DeepSeek.")
+    assert (
+        result["context"]
+        == "This chunk is part of the work experience section from DeepSeek."
+    )
+    assert result["contextualized_text"].startswith(
+        "This chunk is part of the work experience section from DeepSeek."
+    )
 
 
 @pytest.mark.integration
 def test_real_deepseek_smoke():
     api_key = settings.LLM_CONFIG.DEEPSEEK_AI.LLM_API_KEY
-    if not api_key or api_key.lower() in {"test", "test-key", "dummy", "placeholder", "missing_key", "llm_api_key"}:
-        pytest.skip("DEEPSEEK_AI API key is not configured with a real value in settings")
+    if not api_key or api_key.lower() in {
+        "test",
+        "test-key",
+        "dummy",
+        "placeholder",
+        "missing_key",
+        "llm_api_key",
+    }:
+        pytest.skip(
+            "DEEPSEEK_AI API key is not configured with a real value in settings"
+        )
 
     client = get_llm("DEEPSEEK_AI")
 

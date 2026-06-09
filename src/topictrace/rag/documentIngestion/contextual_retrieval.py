@@ -8,17 +8,23 @@ It does not embed text or write vectors.
 
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 from typing import Any
 
-import asyncio
 from langchain_core.language_models import BaseChatModel
+
 from topictrace import settings
 from topictrace.rag.documentIngestion.chunking import chunk_document
-from topictrace.rag.documentIngestion.parseDocument import get_all_pages_text, parse_document
+from topictrace.rag.documentIngestion.parseDocument import (
+    get_all_pages_text,
+    parse_document,
+)
 
 
-async def  build_context_messages(full_document_text: str, chunk: dict[str, Any]) -> list[dict[str, str]]:
+async def build_context_messages(
+    full_document_text: str, chunk: dict[str, Any]
+) -> list[dict[str, str]]:
     return [
         {
             "role": "system",
@@ -72,7 +78,7 @@ async def build_contextualized_document(
     file_path: str,
     client: BaseChatModel,
     model: str | None = None,
-    max_concurrency = settings.CONTEXTUAL_RETRIEVAL_MAX_CONCURRENCY
+    max_concurrency=settings.CONTEXTUAL_RETRIEVAL_MAX_CONCURRENCY,
 ) -> dict[str, Any]:
     parsed = parse_document(file_path)
     full_document_text = get_all_pages_text(parsed)
@@ -80,7 +86,8 @@ async def build_contextualized_document(
     chunks = chunk_document(full_document_text, document_id=document_id)
 
     sem = asyncio.Semaphore(max_concurrency)
-    async def _run_one(chunk : dict[str, Any]):
+
+    async def _run_one(chunk: dict[str, Any]):
         async with sem:
             return await generate_chunk_context(
                 client=client,

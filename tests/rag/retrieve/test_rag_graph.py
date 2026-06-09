@@ -9,24 +9,27 @@ Each node is tested in isolation by:
 This is the main value of LangGraph: each node is a plain async function
 that can be unit-tested without running the full graph.
 """
+
 from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 from langchain_core.messages import AIMessage
 
-from topictrace.rag.documentRetrieve.graph.state import RAGState
+from topictrace.rag.documentRetrieve.graph.edges import (
+    route_after_grader,
+    route_after_vector_search,
+)
 from topictrace.rag.documentRetrieve.graph.nodes import (
-    route_query,
-    vector_search,
+    answer_node,
     grade_chunks_node,
     graph_search,
     rerank,
-    answer_node,
+    route_query,
+    vector_search,
 )
-from topictrace.rag.documentRetrieve.graph.edges import route_after_vector_search, route_after_grader
-
-
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _make_config(neo4j_client=None) -> dict:
     """Build a LangGraph-style config with a mocked Neo4j client."""
@@ -43,16 +46,23 @@ def _mock_grader_result(sufficient: bool, reason: str = "", answer: str = ""):
 
 # ── route_query ───────────────────────────────────────────────────────────────
 
+
 @pytest.mark.anyio
 async def test_route_query_returns_intent():
-    with patch("topictrace.rag.documentRetrieve.graph.nodes.classify_intent", AsyncMock(return_value="complex")):
+    with patch(
+        "topictrace.rag.documentRetrieve.graph.nodes.classify_intent",
+        AsyncMock(return_value="complex"),
+    ):
         result = await route_query({"query": "who manages whom?"})
     assert result == {"intent": "complex"}
 
 
 @pytest.mark.anyio
 async def test_route_query_simple_intent():
-    with patch("topictrace.rag.documentRetrieve.graph.nodes.classify_intent", AsyncMock(return_value="simple")):
+    with patch(
+        "topictrace.rag.documentRetrieve.graph.nodes.classify_intent",
+        AsyncMock(return_value="simple"),
+    ):
         result = await route_query({"query": "what is X?"})
     assert result == {"intent": "simple"}
 
@@ -60,20 +70,31 @@ async def test_route_query_simple_intent():
 @pytest.mark.anyio
 async def test_route_query_only_returns_intent_key():
     """Node must return ONLY the keys it is responsible for."""
-    with patch("topictrace.rag.documentRetrieve.graph.nodes.classify_intent", AsyncMock(return_value="simple")):
+    with patch(
+        "topictrace.rag.documentRetrieve.graph.nodes.classify_intent",
+        AsyncMock(return_value="simple"),
+    ):
         result = await route_query({"query": "q"})
     assert set(result.keys()) == {"intent"}
 
 
 # ── vector_search ─────────────────────────────────────────────────────────────
 
+
 @pytest.mark.anyio
 async def test_vector_search_returns_chunks_and_texts():
     raw = [{"full_context": "context A", "entity_ids": ["E1"]}]
     config = _make_config()
 
-    with patch("topictrace.rag.documentRetrieve.graph.nodes.embeddingModel") as mock_embed_cls, \
-         patch("topictrace.rag.documentRetrieve.graph.nodes.retrieve_similar_chunks", AsyncMock(return_value=raw)):
+    with (
+        patch(
+            "topictrace.rag.documentRetrieve.graph.nodes.embeddingModel"
+        ) as mock_embed_cls,
+        patch(
+            "topictrace.rag.documentRetrieve.graph.nodes.retrieve_similar_chunks",
+            AsyncMock(return_value=raw),
+        ),
+    ):
         mock_embed = MagicMock()
         mock_embed.generateEmebedding = AsyncMock(return_value=[0.1, 0.2])
         mock_embed_cls.return_value = mock_embed
@@ -89,8 +110,15 @@ async def test_vector_search_uses_correct_top_k():
     config = _make_config()
     mock_retrieve = AsyncMock(return_value=[])
 
-    with patch("topictrace.rag.documentRetrieve.graph.nodes.embeddingModel") as mock_embed_cls, \
-         patch("topictrace.rag.documentRetrieve.graph.nodes.retrieve_similar_chunks", mock_retrieve):
+    with (
+        patch(
+            "topictrace.rag.documentRetrieve.graph.nodes.embeddingModel"
+        ) as mock_embed_cls,
+        patch(
+            "topictrace.rag.documentRetrieve.graph.nodes.retrieve_similar_chunks",
+            mock_retrieve,
+        ),
+    ):
         mock_embed_cls.return_value.generateEmebedding = AsyncMock(return_value=[0.0])
         await vector_search({"query": "q", "top_k": 7}, config)
 
@@ -104,8 +132,15 @@ async def test_vector_search_uses_neo4j_client_from_config():
     config = _make_config(sentinel_client)
     mock_retrieve = AsyncMock(return_value=[])
 
-    with patch("topictrace.rag.documentRetrieve.graph.nodes.embeddingModel") as mock_embed_cls, \
-         patch("topictrace.rag.documentRetrieve.graph.nodes.retrieve_similar_chunks", mock_retrieve):
+    with (
+        patch(
+            "topictrace.rag.documentRetrieve.graph.nodes.embeddingModel"
+        ) as mock_embed_cls,
+        patch(
+            "topictrace.rag.documentRetrieve.graph.nodes.retrieve_similar_chunks",
+            mock_retrieve,
+        ),
+    ):
         mock_embed_cls.return_value.generateEmebedding = AsyncMock(return_value=[0.0])
         await vector_search({"query": "q", "top_k": 3}, config)
 
@@ -114,10 +149,14 @@ async def test_vector_search_uses_neo4j_client_from_config():
 
 # ── grade_chunks_node ─────────────────────────────────────────────────────────
 
+
 @pytest.mark.anyio
 async def test_grade_chunks_node_sufficient():
     mock_result = _mock_grader_result(True, "", "Pre-generated answer")
-    with patch("topictrace.rag.documentRetrieve.graph.nodes.grade_chunks", AsyncMock(return_value=mock_result)):
+    with patch(
+        "topictrace.rag.documentRetrieve.graph.nodes.grade_chunks",
+        AsyncMock(return_value=mock_result),
+    ):
         result = await grade_chunks_node({"query": "q", "vector_texts": ["chunk"]})
 
     assert result["grade_sufficient"] is True
@@ -128,7 +167,10 @@ async def test_grade_chunks_node_sufficient():
 @pytest.mark.anyio
 async def test_grade_chunks_node_insufficient():
     mock_result = _mock_grader_result(False, "missing info", "")
-    with patch("topictrace.rag.documentRetrieve.graph.nodes.grade_chunks", AsyncMock(return_value=mock_result)):
+    with patch(
+        "topictrace.rag.documentRetrieve.graph.nodes.grade_chunks",
+        AsyncMock(return_value=mock_result),
+    ):
         result = await grade_chunks_node({"query": "q", "vector_texts": ["chunk"]})
 
     assert result["grade_sufficient"] is False
@@ -138,12 +180,16 @@ async def test_grade_chunks_node_insufficient():
 @pytest.mark.anyio
 async def test_grade_chunks_node_only_returns_grade_keys():
     mock_result = _mock_grader_result(True, "", "answer")
-    with patch("topictrace.rag.documentRetrieve.graph.nodes.grade_chunks", AsyncMock(return_value=mock_result)):
+    with patch(
+        "topictrace.rag.documentRetrieve.graph.nodes.grade_chunks",
+        AsyncMock(return_value=mock_result),
+    ):
         result = await grade_chunks_node({"query": "q", "vector_texts": []})
     assert set(result.keys()) == {"grade_sufficient", "grade_reason", "grade_answer"}
 
 
 # ── graph_search ──────────────────────────────────────────────────────────────
+
 
 @pytest.mark.anyio
 async def test_graph_search_sets_used_graph_search_true():
@@ -152,7 +198,10 @@ async def test_graph_search_sets_used_graph_search_true():
         "raw_chunks": [{"entity_ids": ["E1", "E2"]}],
         "grade_reason": "",
     }
-    with patch("topictrace.rag.documentRetrieve.graph.nodes.gather_graph_facts", AsyncMock(return_value="facts")):
+    with patch(
+        "topictrace.rag.documentRetrieve.graph.nodes.gather_graph_facts",
+        AsyncMock(return_value="facts"),
+    ):
         result = await graph_search(state, config)
 
     assert result["used_graph_search"] is True
@@ -164,7 +213,10 @@ async def test_graph_search_carries_grade_reason_on_escalation():
     """When escalating from simple→graph, the grader's reason must be preserved."""
     config = _make_config()
     state = {"raw_chunks": [], "grade_reason": "missing info"}
-    with patch("topictrace.rag.documentRetrieve.graph.nodes.gather_graph_facts", AsyncMock(return_value="")):
+    with patch(
+        "topictrace.rag.documentRetrieve.graph.nodes.gather_graph_facts",
+        AsyncMock(return_value=""),
+    ):
         result = await graph_search(state, config)
     assert result["reason_for_graph_search"] == "missing info"
 
@@ -180,7 +232,9 @@ async def test_graph_search_extracts_entity_ids_from_chunks():
         "grade_reason": "",
     }
     mock_gather = AsyncMock(return_value="")
-    with patch("topictrace.rag.documentRetrieve.graph.nodes.gather_graph_facts", mock_gather):
+    with patch(
+        "topictrace.rag.documentRetrieve.graph.nodes.gather_graph_facts", mock_gather
+    ):
         await graph_search(state, config)
 
     called_ids = set(mock_gather.call_args[0][1])
@@ -188,6 +242,7 @@ async def test_graph_search_extracts_entity_ids_from_chunks():
 
 
 # ── rerank ────────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.anyio
 async def test_rerank_combines_vector_and_graph_facts():
@@ -197,8 +252,12 @@ async def test_rerank_combines_vector_and_graph_facts():
         "vector_texts": ["chunk1", "chunk2"],
         "graph_facts": "GRAPH KNOWLEDGE:\n- A RELATES_TO B",
     }
-    mock_rerank = AsyncMock(return_value=["chunk1", "GRAPH KNOWLEDGE:\n- A RELATES_TO B"])
-    with patch("topictrace.rag.documentRetrieve.graph.nodes.rerank_documents", mock_rerank):
+    mock_rerank = AsyncMock(
+        return_value=["chunk1", "GRAPH KNOWLEDGE:\n- A RELATES_TO B"]
+    )
+    with patch(
+        "topictrace.rag.documentRetrieve.graph.nodes.rerank_documents", mock_rerank
+    ):
         result = await rerank(state)
 
     docs_passed = mock_rerank.call_args[1]["documents"]
@@ -211,7 +270,9 @@ async def test_rerank_combines_vector_and_graph_facts():
 async def test_rerank_uses_correct_top_k_rerank():
     state = {"query": "q", "top_k_rerank": 5, "vector_texts": ["c1"], "graph_facts": ""}
     mock_rerank = AsyncMock(return_value=["c1"])
-    with patch("topictrace.rag.documentRetrieve.graph.nodes.rerank_documents", mock_rerank):
+    with patch(
+        "topictrace.rag.documentRetrieve.graph.nodes.rerank_documents", mock_rerank
+    ):
         await rerank(state)
     assert mock_rerank.call_args[1]["top_k"] == 5
 
@@ -219,9 +280,16 @@ async def test_rerank_uses_correct_top_k_rerank():
 @pytest.mark.anyio
 async def test_rerank_skips_empty_graph_facts():
     """If graph_facts is empty string, it must NOT be added to the rerank list."""
-    state = {"query": "q", "top_k_rerank": 3, "vector_texts": ["chunk1"], "graph_facts": ""}
+    state = {
+        "query": "q",
+        "top_k_rerank": 3,
+        "vector_texts": ["chunk1"],
+        "graph_facts": "",
+    }
     mock_rerank = AsyncMock(return_value=["chunk1"])
-    with patch("topictrace.rag.documentRetrieve.graph.nodes.rerank_documents", mock_rerank):
+    with patch(
+        "topictrace.rag.documentRetrieve.graph.nodes.rerank_documents", mock_rerank
+    ):
         await rerank(state)
     docs_passed = mock_rerank.call_args[1]["documents"]
     assert "" not in docs_passed
@@ -229,6 +297,7 @@ async def test_rerank_skips_empty_graph_facts():
 
 
 # ── answer_node ───────────────────────────────────────────────────────────────
+
 
 @pytest.mark.anyio
 async def test_answer_node_fast_path_uses_grade_answer():
@@ -261,8 +330,15 @@ async def test_answer_node_standard_path_calls_llm():
     mock_bound_llm.ainvoke = AsyncMock(return_value=mock_resp)
     mock_llm.bind.return_value = mock_bound_llm
 
-    with patch("topictrace.rag.documentRetrieve.graph.nodes.get_llm", return_value=mock_llm), \
-         patch("topictrace.rag.documentRetrieve.graph.nodes.build_final_answer_prompt", return_value="prompt"):
+    with (
+        patch(
+            "topictrace.rag.documentRetrieve.graph.nodes.get_llm", return_value=mock_llm
+        ),
+        patch(
+            "topictrace.rag.documentRetrieve.graph.nodes.build_final_answer_prompt",
+            return_value="prompt",
+        ),
+    ):
         result = await answer_node(state)
 
     assert result["answer"] == "LLM Answer"
@@ -277,6 +353,7 @@ async def test_answer_node_handles_empty_context_gracefully():
 
 
 # ── Conditional edges ─────────────────────────────────────────────────────────
+
 
 def test_edge_complex_routes_to_graph_search():
     assert route_after_vector_search({"intent": "complex"}) == "graph_search"

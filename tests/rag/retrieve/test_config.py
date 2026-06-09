@@ -1,13 +1,16 @@
 """
 Task 1: Test that voyage_api_key is loaded from config.
 """
+
 from topictrace import settings
 
 
 def test_voyage_api_key_is_loaded():
     """voyage_api_key must exist inside RERANKER_CONFIG (even if empty in CI)."""
     assert hasattr(settings, "RERANKER_CONFIG"), "settings.RERANKER_CONFIG is missing"
-    assert hasattr(settings.RERANKER_CONFIG, "VOYAGE_API_KEY"), "RERANKER_CONFIG.VOYAGE_API_KEY is missing"
+    assert hasattr(settings.RERANKER_CONFIG, "VOYAGE_API_KEY"), (
+        "RERANKER_CONFIG.VOYAGE_API_KEY is missing"
+    )
 
 
 def test_voyage_api_key_is_string():

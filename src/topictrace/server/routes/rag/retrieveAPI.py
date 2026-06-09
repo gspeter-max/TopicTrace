@@ -4,14 +4,11 @@ Retrieval API endpoints.
 This file only contains the FastAPI route definitions.
 All business logic lives in src/documentRetrieve/retrieve.py.
 """
-from topictrace import log
+
 from fastapi import APIRouter
 
-from topictrace.server.schemas.rag.retrieveModels import QueryRequest, QueryResponse
 from topictrace.rag.documentRetrieve.retrieve import handle_query
-
-
-
+from topictrace.server.schemas.rag.retrieveModels import QueryRequest, QueryResponse
 
 retrieveRouter = APIRouter(prefix="/retrieve", tags=["Retrieval"])
 

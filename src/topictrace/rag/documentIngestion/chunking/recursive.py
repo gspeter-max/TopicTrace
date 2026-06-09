@@ -8,9 +8,12 @@ call LLMs, embed text, or read files from disk.
 from __future__ import annotations
 
 from functools import lru_cache
-from topictrace import settings
+
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from transformers import XLMRobertaTokenizerFast
+
+from topictrace import settings
+
 
 @lru_cache(maxsize=1)
 def _get_tokenizer() -> XLMRobertaTokenizerFast:

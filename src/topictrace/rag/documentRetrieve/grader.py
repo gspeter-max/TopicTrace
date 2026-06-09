@@ -5,23 +5,29 @@ Analyzes retrieved chunks for a specific query and determines if they contain
 sufficient information to answer the query. If insufficient, provides a reason
 to justify graph escalation.
 """
+
 import json
-from topictrace import log
+
 from pydantic import BaseModel, Field
 
-from topictrace.provider.llm import get_llm
+from topictrace import log
 from topictrace.prompts.grader_chunk_evaluator import GRADER_PROMPT
-
-
+from topictrace.provider.llm import get_llm
 
 
 class GraderResult(BaseModel):
-    sufficient: bool = Field(..., description="True if the chunks contain enough information to fully answer the query.")
-    reason: str = Field(..., description="If sufficient is False, explain exactly what information is missing. If True, this can be empty.")
-    answer: str = Field("", description="If sufficient is True, generate the final answer to the user's query here.")
-
-
-
+    sufficient: bool = Field(
+        ...,
+        description="True if the chunks contain enough information to fully answer the query.",
+    )
+    reason: str = Field(
+        ...,
+        description="If sufficient is False, explain exactly what information is missing. If True, this can be empty.",
+    )
+    answer: str = Field(
+        "",
+        description="If sufficient is True, generate the final answer to the user's query here.",
+    )
 
 
 async def grade_chunks(query: str, chunks: list[str]) -> GraderResult:
@@ -41,21 +47,27 @@ async def grade_chunks(query: str, chunks: list[str]) -> GraderResult:
 
         user_content = f"QUERY: {query}\n\nRETRIEVED DOCUMENTS:\n{chunks_text}"
 
-        response = await bound_llm.ainvoke([
-            {"role": "system", "content": GRADER_PROMPT},
-            {"role": "user", "content": user_content},
-        ])
+        response = await bound_llm.ainvoke(
+            [
+                {"role": "system", "content": GRADER_PROMPT},
+                {"role": "user", "content": user_content},
+            ]
+        )
 
         content = response.content
         if not content:
-            log.warning("Grader received empty response from LLM, defaulting to insufficient")
-            return GraderResult(sufficient=False, reason="Empty LLM response.", answer="")
+            log.warning(
+                "Grader received empty response from LLM, defaulting to insufficient"
+            )
+            return GraderResult(
+                sufficient=False, reason="Empty LLM response.", answer=""
+            )
 
         data = json.loads(content)
         result = GraderResult(
             sufficient=bool(data.get("sufficient", False)),
             reason=str(data.get("reason", "No reason provided by LLM.")),
-            answer=str(data.get("answer", ""))
+            answer=str(data.get("answer", "")),
         )
 
         if not result.sufficient:
@@ -66,8 +78,15 @@ async def grade_chunks(query: str, chunks: list[str]) -> GraderResult:
         return result
 
     except json.JSONDecodeError as e:
-        log.warning("Grader failed to parse JSON from LLM, defaulting to insufficient", error=str(e))
-        return GraderResult(sufficient=False, reason=f"Grader JSON parse error: {e}", answer="")
+        log.warning(
+            "Grader failed to parse JSON from LLM, defaulting to insufficient",
+            error=str(e),
+        )
+        return GraderResult(
+            sufficient=False, reason=f"Grader JSON parse error: {e}", answer=""
+        )
     except Exception as e:
         log.error("Grader LLM call failed, defaulting to insufficient", error=str(e))
-        return GraderResult(sufficient=False, reason=f"Grader LLM error: {e}", answer="")
+        return GraderResult(
+            sufficient=False, reason=f"Grader LLM error: {e}", answer=""
+        )

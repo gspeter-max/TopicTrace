@@ -2,16 +2,17 @@
 Task 4: Tests for the LLM grader.
 All LLM calls are mocked.
 """
+
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from langchain_core.messages import AIMessage
 
-from topictrace.rag.documentRetrieve.grader import grade_chunks, GraderResult
-
+from topictrace.rag.documentRetrieve.grader import GraderResult, grade_chunks
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _make_llm_response(content: str):
     return AIMessage(content=content)
@@ -19,10 +20,13 @@ def _make_llm_response(content: str):
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.anyio
 async def test_grader_returns_sufficient():
     """When the LLM outputs sufficient=True, it returns a GraderResult with sufficient=True."""
-    mock_resp = _make_llm_response(json.dumps({"sufficient": True, "reason": "all good"}))
+    mock_resp = _make_llm_response(
+        json.dumps({"sufficient": True, "reason": "all good"})
+    )
 
     with patch("topictrace.rag.documentRetrieve.grader.get_llm") as mock_get_llm:
         mock_llm = MagicMock()
@@ -41,7 +45,9 @@ async def test_grader_returns_sufficient():
 @pytest.mark.anyio
 async def test_grader_returns_insufficient():
     """When the LLM outputs sufficient=False, it returns a GraderResult with sufficient=False."""
-    mock_resp = _make_llm_response(json.dumps({"sufficient": False, "reason": "missing info"}))
+    mock_resp = _make_llm_response(
+        json.dumps({"sufficient": False, "reason": "missing info"})
+    )
 
     with patch("topictrace.rag.documentRetrieve.grader.get_llm") as mock_get_llm:
         mock_llm = MagicMock()

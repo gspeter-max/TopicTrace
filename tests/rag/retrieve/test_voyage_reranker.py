@@ -2,27 +2,27 @@
 Task 2: Tests for the Voyage AI reranker provider.
 All HTTP calls are mocked — no real network traffic.
 """
-import asyncio
-from unittest.mock import MagicMock, patch, AsyncMock
+
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from topictrace.provider.rerank import rerank_documents
 
-
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _make_voyage_response(documents: list[str], scores: list[float]):
     """Build a fake Voyage /v1/rerank JSON response."""
     return {
         "data": [
-            {"index": i, "relevance_score": score}
-            for i, score in enumerate(scores)
+            {"index": i, "relevance_score": score} for i, score in enumerate(scores)
         ]
     }
 
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.anyio
 async def test_rerank_returns_top_n_sorted():
@@ -37,7 +37,9 @@ async def test_rerank_returns_top_n_sorted():
     fake_resp.json.return_value = _make_voyage_response(docs, scores)
     fake_resp.raise_for_status = MagicMock()
 
-    with patch("topictrace.provider.rerank.httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
+    with patch(
+        "topictrace.provider.rerank.httpx.AsyncClient.post", new_callable=AsyncMock
+    ) as mock_post:
         mock_post.return_value = fake_resp
         result = await rerank_documents(query="test query", documents=docs, top_k=2)
 
@@ -61,12 +63,14 @@ async def test_rerank_respects_top_k():
     fake_resp.json.return_value = _make_voyage_response(docs, scores)
     fake_resp.raise_for_status = MagicMock()
 
-    with patch("topictrace.provider.rerank.httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
+    with patch(
+        "topictrace.provider.rerank.httpx.AsyncClient.post", new_callable=AsyncMock
+    ) as mock_post:
         mock_post.return_value = fake_resp
         result = await rerank_documents(query="q", documents=docs, top_k=2)
 
     assert len(result) == 2
-    assert result[0] == "c"   # score 0.8 — highest
+    assert result[0] == "c"  # score 0.8 — highest
 
 
 @pytest.mark.anyio
@@ -79,10 +83,12 @@ async def test_rerank_uses_rerank_endpoint():
     fake_resp.json.return_value = _make_voyage_response(docs, scores)
     fake_resp.raise_for_status = MagicMock()
 
-    with patch("topictrace.provider.rerank.httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
+    with patch(
+        "topictrace.provider.rerank.httpx.AsyncClient.post", new_callable=AsyncMock
+    ) as mock_post:
         mock_post.return_value = fake_resp
         await rerank_documents(query="q", documents=docs, top_k=1)
-        
+
         called_url = mock_post.call_args[0][0]
 
     assert "/v1/rerank" in called_url

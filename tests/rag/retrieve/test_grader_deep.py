@@ -1,16 +1,17 @@
 """
 Deep tests for the LLM grader.
 """
+
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from langchain_core.messages import AIMessage
 
-from topictrace.rag.documentRetrieve.grader import grade_chunks, GraderResult
-
+from topictrace.rag.documentRetrieve.grader import GraderResult, grade_chunks
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _make_llm_response(content: str):
     return AIMessage(content=content)
@@ -18,10 +19,13 @@ def _make_llm_response(content: str):
 
 # ── Deep Tests ────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.anyio
 async def test_grader_sends_temperature_zero():
     """Grading must be deterministic — temperature must be exactly 0.0."""
-    resp = _make_llm_response(json.dumps({"sufficient": True, "reason": "", "answer": "Yes."}))
+    resp = _make_llm_response(
+        json.dumps({"sufficient": True, "reason": "", "answer": "Yes."})
+    )
 
     with patch("topictrace.rag.documentRetrieve.grader.get_llm") as mock_get_llm:
         mock_llm = MagicMock()
@@ -39,7 +43,9 @@ async def test_grader_sends_temperature_zero():
 @pytest.mark.anyio
 async def test_grader_requests_json_object_format():
     """Grader must request json_object format from Mistral."""
-    resp = _make_llm_response(json.dumps({"sufficient": True, "reason": "", "answer": "Yes."}))
+    resp = _make_llm_response(
+        json.dumps({"sufficient": True, "reason": "", "answer": "Yes."})
+    )
 
     with patch("topictrace.rag.documentRetrieve.grader.get_llm") as mock_get_llm:
         mock_llm = MagicMock()
@@ -57,7 +63,9 @@ async def test_grader_requests_json_object_format():
 @pytest.mark.anyio
 async def test_grader_sends_both_query_and_chunks_to_llm():
     """The user message sent to LLM must contain BOTH the query and all chunk text."""
-    resp = _make_llm_response(json.dumps({"sufficient": False, "reason": "missing", "answer": ""}))
+    resp = _make_llm_response(
+        json.dumps({"sufficient": False, "reason": "missing", "answer": ""})
+    )
     QUERY = "What is the capital of France?"
     CHUNK = "Paris is a city in Europe."
 
@@ -80,7 +88,9 @@ async def test_grader_sends_both_query_and_chunks_to_llm():
 @pytest.mark.anyio
 async def test_grader_joins_multiple_chunks_with_separator():
     """Multiple chunks must be joined with a separator so the LLM sees them as distinct passages."""
-    resp = _make_llm_response(json.dumps({"sufficient": True, "reason": "", "answer": "Yes."}))
+    resp = _make_llm_response(
+        json.dumps({"sufficient": True, "reason": "", "answer": "Yes."})
+    )
     chunks = ["chunk one text", "chunk two text", "chunk three text"]
 
     with patch("topictrace.rag.documentRetrieve.grader.get_llm") as mock_get_llm:
@@ -103,7 +113,9 @@ async def test_grader_joins_multiple_chunks_with_separator():
 async def test_grader_populates_answer_field_when_sufficient():
     """When sufficient=True, the answer field must contain the LLM's generated answer."""
     expected_answer = "The answer is Paris."
-    resp = _make_llm_response(json.dumps({"sufficient": True, "reason": "", "answer": expected_answer}))
+    resp = _make_llm_response(
+        json.dumps({"sufficient": True, "reason": "", "answer": expected_answer})
+    )
 
     with patch("topictrace.rag.documentRetrieve.grader.get_llm") as mock_get_llm:
         mock_llm = MagicMock()
@@ -114,13 +126,17 @@ async def test_grader_populates_answer_field_when_sufficient():
 
         result = await grade_chunks(query="test", chunks=["info"])
 
-    assert result.answer == expected_answer, "answer field must contain the LLM's response"
+    assert result.answer == expected_answer, (
+        "answer field must contain the LLM's response"
+    )
 
 
 @pytest.mark.anyio
 async def test_grader_answer_is_empty_when_insufficient():
     """When sufficient=False, the answer field must be empty string."""
-    resp = _make_llm_response(json.dumps({"sufficient": False, "reason": "missing data", "answer": ""}))
+    resp = _make_llm_response(
+        json.dumps({"sufficient": False, "reason": "missing data", "answer": ""})
+    )
 
     with patch("topictrace.rag.documentRetrieve.grader.get_llm") as mock_get_llm:
         mock_llm = MagicMock()
@@ -174,7 +190,9 @@ async def test_grader_answer_is_empty_on_llm_exception():
 @pytest.mark.anyio
 async def test_grader_result_is_grader_result_type():
     """The return type must always be GraderResult — in every code path."""
-    resp = _make_llm_response(json.dumps({"sufficient": True, "reason": "", "answer": "ans"}))
+    resp = _make_llm_response(
+        json.dumps({"sufficient": True, "reason": "", "answer": "ans"})
+    )
 
     with patch("topictrace.rag.documentRetrieve.grader.get_llm") as mock_get_llm:
         mock_llm = MagicMock()
@@ -195,7 +213,9 @@ async def test_grader_result_is_grader_result_type():
 @pytest.mark.anyio
 async def test_grader_llm_is_called_exactly_once_per_invocation():
     """For a single grade_chunks() call with chunks, LLM must be called exactly once."""
-    resp = _make_llm_response(json.dumps({"sufficient": True, "reason": "", "answer": "yes"}))
+    resp = _make_llm_response(
+        json.dumps({"sufficient": True, "reason": "", "answer": "yes"})
+    )
 
     with patch("topictrace.rag.documentRetrieve.grader.get_llm") as mock_get_llm:
         mock_llm = MagicMock()
