@@ -9,13 +9,6 @@ from topictrace.prompts.ingestion.extraction import (
     USER_PROMPT_TEMPLATE,
 )
 
-
-
-def parse_chunk_graph_extraction_response(response_payload: dict[str, Any]) -> ChunkGraphExtractionResult:
-    """This checks if we can correctly understand the answer the AI gives us and pull out the names and connections from it."""
-    return ChunkGraphExtractionResult(**response_payload)
-
-
 def build_graph_extraction_messages(chunk: dict[str, Any]) -> list[dict[str, str]]:
     """This function puts together the instructions and the text piece so we can ask the AI to find names and connections."""
     return [
@@ -49,6 +42,6 @@ async def extract_graph_data_from_chunk(
     bound_client = llm_client.bind(**bind_kwargs)
     response = await bound_client.ainvoke(build_graph_extraction_messages(chunk))
     response_payload = json.loads(response.content or "{}")
-    return parse_chunk_graph_extraction_response(response_payload)
+    return ChunkGraphExtractionResult(**response_payload)
 
 

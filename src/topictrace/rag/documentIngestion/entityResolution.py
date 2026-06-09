@@ -1,7 +1,8 @@
 import json
+import numpy as np
 from typing import Any
 from langchain_core.language_models import BaseChatModel
-from rapidfuzz import fuzz
+from rapidfuzz import process,fuzz
 
 from topictrace import settings
 from topictrace.rag.documentIngestion.models.graphExtractionModels import EntityResolutionDecision
@@ -10,67 +11,61 @@ from topictrace.prompts.ingestion.resolution import (
     USER_PROMPT_TEMPLATE,
 )
 
-
-
-def group_entities_by_normalized_name(raw_entity_names: list[str]) -> dict[str, list[str]]:
-    """This function puts names that look exactly the same (except for capital letters or extra spaces) into groups, so we know they are the same thing."""
-    
-    grouped_names: dict[str, list[str]] = {}
-
-    for raw_entity_name in raw_entity_names:
-        normalized_name = " ".join(raw_entity_name.lower().strip().split())
-        grouped_names.setdefault(normalized_name, []).append(raw_entity_name)
-
-    return grouped_names
-
-
 def find_fuzzy_merge_candidates(
-    raw_entity_names: list[str],
+    raw_entity_names: set[str],
     threshold: int = settings.ENTITY_RESOLUTION_FUZZY_THRESHOLD,
-) -> list[tuple[str, str]]:
-    """This function finds pairs of names that look very similar, like "Apple" and "Apple Inc", and puts them together so we can check if they mean the same thing."""
-    
-    fuzzy_merge_candidates: list[tuple[str, str]] = []
-    
-    for left_index, left_name in enumerate(raw_entity_names):
-        for right_name in raw_entity_names[left_index + 1:]:
-            if fuzz.token_set_ratio(left_name, right_name) >= threshold:
-                fuzzy_merge_candidates.append((left_name, right_name))
-    return fuzzy_merge_candidates
+) -> tuple[list[tuple[str, str]], set[str]]:  
+    """Finds pairs of similar names (e.g. 'Apple' vs 'Apple Inc')
+    and returns unmatched names separately."""
+
+    entity_list = list(raw_entity_names) 
+
+    similarity_matrix = process.cdist(
+        entity_list,
+        entity_list,
+        scorer=fuzz.token_set_ratio,
+        score_cutoff=threshold,  # skips storing scores below threshold early → faster
+        workers=-1,              # uses all CPU cores → faster on large inputs
+    )
+
+    ROWS, COLS = np.where(similarity_matrix >= threshold)
+    fuzzy_candidates = []
+    used_candidates = set()
+
+    for r, c in zip(ROWS, COLS):
+        if r < c:
+            fuzzy_candidates.append((entity_list[r], entity_list[c])) 
+            used_candidates.add(entity_list[r])
+            used_candidates.add(entity_list[c])
+
+    left_candidates = raw_entity_names.difference(used_candidates) 
+    return fuzzy_candidates, left_candidates
 
 
 def split_clear_cases_from_ambiguous_cases(
     pairs_with_scores: list[tuple[str, str, float]],
     high_threshold: float = settings.ENTITY_RESOLUTION_HIGH_THRESHOLD,
-    low_threshold: float = settings.ENTITY_RESOLUTION_LOW_THRESHOLD,
-) -> tuple[list[tuple[str, str, float]], list[tuple[str, str, float]], list[tuple[str, str, float]]]:
-    """This function checks that we can correctly separate the pairs of names that are super obvious from the pairs that are confusing and need the AI to look at them."""
+) -> tuple[list[tuple[str, str, float]], set[str]]:
+    """This function checks that we can correctly separate the pairs of names that are super obvious \
+        from the pairs that are confusing and need the AI to look at them."""
+
     same_entity_pairs = []
-    ambiguous_pairs = []
-    different_entity_pairs = []
+    different_entity = set() 
 
     for left, right, score in pairs_with_scores:
         if score >= high_threshold:
             same_entity_pairs.append((left, right, score))
-        elif score >= low_threshold:
-            ambiguous_pairs.append((left, right, score))
         else:
-            different_entity_pairs.append((left, right, score))
+            different_entity.add(left)
+            different_entity.add(right)
             
-    return same_entity_pairs, ambiguous_pairs, different_entity_pairs
+    return same_entity_pairs, different_entity
 
 
-def build_entity_resolution_messages(ambiguous_pairs: list[tuple[str, str, float]]) -> dict[str, Any]:
-    """This makes sure we only send the confusing pairs of names to the AI for review."""
-    payload =  {
-        "ambiguous_pairs": [
-            {
-                "left_name": pair[0],
-                "right_name": pair[1],
-                "similarity_score": pair[2],
-            }
-            for pair in ambiguous_pairs
-        ]
+def build_entity_resolution_messages(entity_names: set[str]) -> list[dict[str, Any]]:
+    """Build messages containing the flat list of entity names for the LLM to resolve."""
+    payload = {
+        "entity_names": list(entity_names)
     }
 
     return [
@@ -90,7 +85,7 @@ def build_entity_resolution_messages(ambiguous_pairs: list[tuple[str, str, float
 async def resolve_ambiguous_entity_pairs(
     *,
     llm_client: BaseChatModel,
-    ambiguous_pairs: list[tuple[str, str, float]],
+    ambiguous_pairs: set[str],
     model: str | None = None,
 ) -> list[EntityResolutionDecision]:
     """This function asks the AI to look at pairs of names we are confused about, and decide if they are the same thing or different things."""
@@ -108,3 +103,5 @@ async def resolve_ambiguous_entity_pairs(
         EntityResolutionDecision(**decision_row)
         for decision_row in response_payload.get("decisions", [])
     ]
+
+

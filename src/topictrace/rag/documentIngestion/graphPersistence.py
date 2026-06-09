@@ -1,69 +1,135 @@
-from typing import Any
 import hashlib
-
-from topictrace.rag.documentIngestion.models.graphExtractionModels import ChunkGraphExtractionResult, CanonicalGraphPersistencePayload
-
+import logging
+from typing import Any
+from collections import defaultdict
+from topictrace import log 
+from topictrace.rag.documentIngestion.models.graphExtractionModels import (
+    ChunkGraphExtractionResult,
+    CanonicalGraphPersistencePayload,
+)
 
 def generate_stable_entity_id(name: str) -> str:
-    """
-    This function takes a name (like 'Apple') and turns it into a short 
-    12-character code (like 'a1b2c3'). 
+    """Converts an entity canonical name into a stable 12-character hex ID."""
     
-    It's like giving every important thing a unique ID card so the 
-    computer doesn't get confused between different things with the 
-    same name.
-    """
-    # 1. Clean up the name (remove extra spaces and make letters small)
+    if not name or not name.strip():
+        raise ValueError("Entity name must not be empty when generating a stable ID.")
+
     normalized_name = " ".join(name.lower().strip().split())
-    
-    # 2. Turn the name into a scrambled secret code (a hash)
-    secret_code = hashlib.sha256(normalized_name.encode()).hexdigest()
-    
-    # 3. Take just the first 12 letters of that code to keep it short
-    short_code = secret_code[:12]
-    
-    return short_code
+    return hashlib.sha256(normalized_name.encode()).hexdigest()[:12]
+
+
+def _invert_canonical_map(
+    canonical_name_by_raw_name: dict[str, list[str]],
+) -> dict[str, str]:
+    """Inverts the resolution map produced by resolve_entities_for_graph."""
+    raw_to_canonical: dict[str, str] = {}
+
+    for canonical_name, raw_names in canonical_name_by_raw_name.items():
+        if not isinstance(canonical_name, str) or not canonical_name.strip():
+            log.warning(
+                "Skipping invalid canonical name in resolution map: %r",
+                canonical_name,
+            )
+            continue
+
+        raw_to_canonical[canonical_name] = canonical_name
+
+        for raw_name in raw_names:
+            if not isinstance(raw_name, str) or not raw_name.strip():
+                log.warning(
+                    "Skipping invalid raw name under canonical %r: %r",
+                    canonical_name,
+                    raw_name,
+                )
+                continue
+            raw_to_canonical[raw_name] = canonical_name
+
+    return raw_to_canonical
 
 
 def rewrite_graph_results_to_canonical_entities(
     raw_chunk_graph_results: list[ChunkGraphExtractionResult],
-    canonical_name_by_raw_name: dict[str, str],
+    canonical_name_by_raw_name: dict[str, list[str]],
 ) -> CanonicalGraphPersistencePayload:
-    """This function takes all the names we found and changes them to the single best name we chose for them, so we can save them correctly."""
-    rewritten_entities = []
-    rewritten_relationships = []
+    """Rewrites every raw entity / relationship name to its resolved canonical name."""
+    
+    if not isinstance(canonical_name_by_raw_name, dict):
+        raise TypeError(
+            f"canonical_name_by_raw_name must be a dict, got {type(canonical_name_by_raw_name)!r}"
+        )
+
+    raw_to_canonical = _invert_canonical_map(canonical_name_by_raw_name)
+
+    rewritten_entities: list[dict[str, Any]] = []
+    rewritten_relationships: list[dict[str, Any]] = []
+
     for chunk_graph_result in raw_chunk_graph_results:
         for entity in chunk_graph_result.entities:
-            rewritten_entities.append({
-                "canonical_name": canonical_name_by_raw_name.get(entity.entity_name, entity.entity_name),
-                "entity_type": entity.entity_type,
-                "chunk_id": entity.chunk_id,
-                "evidence_text": entity.evidence_text,
-            })
+            resolved = raw_to_canonical.get(entity.entity_name, entity.entity_name)
+            rewritten_entities.append(
+                {
+                    "canonical_name": resolved,
+                    "entity_type": entity.entity_type,
+                    "chunk_id": entity.chunk_id,
+                    "evidence_text": entity.evidence_text,
+                }
+            )
+
         for relationship in chunk_graph_result.relationships:
-            rewritten_relationships.append({
-                "source_entity_name": canonical_name_by_raw_name.get(relationship.source_entity_name, relationship.source_entity_name),
-                "relationship_type": relationship.relationship_type,
-                "target_entity_name": canonical_name_by_raw_name.get(relationship.target_entity_name, relationship.target_entity_name),
-                "chunk_id": relationship.chunk_id,
-                "evidence_text": relationship.evidence_text,
-            })
-    return CanonicalGraphPersistencePayload(entities=rewritten_entities, relationships=rewritten_relationships)
+            resolved_source = raw_to_canonical.get(
+                relationship.source_entity_name, relationship.source_entity_name
+            )
+            resolved_target = raw_to_canonical.get(
+                relationship.target_entity_name, relationship.target_entity_name
+            )
+            rewritten_relationships.append(
+                {
+                    "source_entity_name": resolved_source,
+                    "relationship_type": relationship.relationship_type,
+                    "target_entity_name": resolved_target,
+                    "chunk_id": relationship.chunk_id,
+                    "evidence_text": relationship.evidence_text,
+                }
+            )
+
+    log.debug(
+        "Rewrote %d entities and %d relationships to canonical names.",
+        len(rewritten_entities),
+        len(rewritten_relationships),
+    )
+    return CanonicalGraphPersistencePayload(
+        entities=rewritten_entities, relationships=rewritten_relationships
+    )
 
 
 def merge_duplicate_relationship_payloads(
     relationship_payloads: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    """This function takes many identical connections and squishes them into one, making sure we remember all the places we found them."""
-    merged_relationships_by_key: dict[tuple[str, str, str], dict[str, Any]] = {}
-    for relationship_payload in relationship_payloads:
-        relationship_key = (
-            relationship_payload["source_entity_name"],
-            relationship_payload["relationship_type"],
-            relationship_payload["target_entity_name"],
+    """
+    Deduplicates relationships with the same (source, type, target) triple.
+
+    The first occurrence wins; subsequent duplicates are silently dropped.
+    This prevents Neo4j MERGE from creating phantom duplicates when the same
+    relationship is extracted from multiple overlapping chunks.
+
+    Args:
+        relationship_payloads: Raw list of relationship dicts, potentially
+                               containing duplicates.
+
+    Returns:
+        Deduplicated list preserving insertion order of first occurrences.
+    """
+    seen: dict[tuple[str, str, str], dict[str, Any]] = {}
+
+    for rel in relationship_payloads:
+        key = (
+            rel["source_entity_name"],
+            rel["relationship_type"],
+            rel["target_entity_name"],
         )
-        merged_relationships_by_key.setdefault(relationship_key, relationship_payload)
-    return list(merged_relationships_by_key.values())
+        seen.setdefault(key, rel)
+
+    return list(seen.values())
 
 
 def build_neo4j_graph_write_payload(
@@ -72,55 +138,82 @@ def build_neo4j_graph_write_payload(
     rewritten_relationships: list[dict[str, Any]],
 ) -> dict[str, Any]:
     """
-    This function gathers all the names and connections we found in a 
-    document and prepares them to be saved.
-    
-    We updated it to also map each piece of text (Chunk) to the unique 
-    entity_id of the names found inside it.
+    Assembles the final structured payload ready to be written to Neo4j.
+
+    Responsibilities:
+    - Deduplicates entities by canonical name (first occurrence wins for type).
+    - Builds a flat mention list (one row per entity-chunk occurrence).
+    - Computes a stable entity_id for every unique canonical name.
+    - Produces a chunk_to_entity_ids mapping used to annotate Chunk nodes.
+    - Deduplicates relationships.
+
+    Args:
+        document_id: Unique identifier for the source document.
+        canonical_entities: Rewritten entity dicts from
+                            rewrite_graph_results_to_canonical_entities.
+        rewritten_relationships: Rewritten relationship dicts from the same fn.
+
+    Returns:
+        Dict with keys: document_id, entities, mentions, relationships,
+        chunk_to_entity_ids.
+
+    Raises:
+        ValueError: If document_id is empty.
     """
-    unique_entities = {}
-    mentions = []
-    # This dictionary will map: piece_of_text -> [list of name entity_ids]
-    chunk_to_entity_ids = {}
+    if not document_id or not document_id.strip():
+        raise ValueError("document_id must not be empty when building the graph payload.")
+
+    unique_entities: dict[str, dict[str, Any]] = {}
+    mentions: list[dict[str, Any]] = []
+    _chunk_to_entity_ids: defaultdict[str, set[str]] = defaultdict(set)
 
     for entity in canonical_entities:
-        clean_name = entity["canonical_name"]
-        # Use our tool from Task 1 to get the code
+        clean_name: str = entity["canonical_name"]
+
+        if not clean_name or not clean_name.strip():
+            log.warning(
+                "Skipping entity with empty canonical_name in document %r.", document_id
+            )
+            continue
+
         entity_id = generate_stable_entity_id(clean_name)
 
         if clean_name not in unique_entities:
             unique_entities[clean_name] = {
                 "canonical_name": clean_name,
                 "entity_type": entity["entity_type"],
-                "entity_id": entity_id # Remember the code for the entity
+                "entity_id": entity_id,
             }
 
-        mentions.append({
-            "canonical_name": clean_name,
-            "entity_id": entity_id,
-            "document_id": document_id,
-            "chunk_id": entity["chunk_id"],
-            "evidence_text": entity["evidence_text"],
-        })
-        
-        # Link this code to the specific piece of text it came from
-        parent_chunk_id = entity["chunk_id"]
-        if parent_chunk_id not in chunk_to_entity_ids:
-            chunk_to_entity_ids[parent_chunk_id] = set()
-        chunk_to_entity_ids[parent_chunk_id].add(entity_id)
+        mentions.append(
+            {
+                "canonical_name": clean_name,
+                "entity_id": entity_id,
+                "document_id": document_id,
+                "chunk_id": entity["chunk_id"],
+                "evidence_text": entity["evidence_text"],
+            }
+        )
 
-    # Convert sets to lists so the database can read them easily
-    chunk_to_entity_ids = {k: list(v) for k, v in chunk_to_entity_ids.items()}
+        _chunk_to_entity_ids[entity["chunk_id"]].add(entity_id)
 
-    for rel in rewritten_relationships:
-        rel["document_id"] = document_id
-        
+    chunk_to_entity_ids: dict[str, list[str]] = {
+        k: list(v) for k, v in _chunk_to_entity_ids.items()
+    }
     merged_relationships = merge_duplicate_relationship_payloads(rewritten_relationships)
+
+    log.debug(
+        "Built graph payload for document %r: %d unique entities, %d mentions, %d relationships.",
+        document_id,
+        len(unique_entities),
+        len(mentions),
+        len(merged_relationships),
+    )
 
     return {
         "document_id": document_id,
         "entities": list(unique_entities.values()),
         "mentions": mentions,
         "relationships": merged_relationships,
-        "chunk_to_entity_ids": chunk_to_entity_ids # Pass our new mapping along
+        "chunk_to_entity_ids": chunk_to_entity_ids,
     }

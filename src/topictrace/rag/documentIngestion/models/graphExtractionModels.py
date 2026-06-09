@@ -40,7 +40,6 @@ class CanonicalGraphPersistencePayload(BaseModel):
 class EntityResolutionDecision(BaseModel):
     left_name: str
     right_name: str
-    should_merge: bool
     canonical_name: str
 
 RawGraphEntity = ExtractedEntity

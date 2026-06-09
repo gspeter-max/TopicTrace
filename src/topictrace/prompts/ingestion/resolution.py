@@ -1,25 +1,20 @@
-SYSTEM_PROMPT = """Look at pairs of names and decide whether they refer to the same real-world thing, such as a person, company, or place.
+SYSTEM_PROMPT = """Analyze the list of entity names and find pairs that refer to the same real-world entity (e.g. person, company, place).
 
-Merge only when you are completely confident they are the same thing. If the names differ only in small formatting changes, punctuation changes, abbreviations, or common naming variations, treat them as the same only when that is clearly correct.
+For any pair of matching names:
+- Identify the best, most complete, and most correct version as `canonical_name`.
+- Output a decision with `left_name` and `right_name` set to the two matching names.
 
-If two names are the same:
-- set `should_merge` to true
-- set `canonical_name` to the best, most complete, and most correct version of the name
-
-If two names are not the same, or you are not sure:
-- set `should_merge` to false
-- leave `canonical_name` empty
+Only output decisions for names that should be merged. If names do not match or are not similar, do not include them in the output.
 
 Return only a JSON object with a `decisions` array.
 Each item in `decisions` must look like this:
 {
   "left_name": "...",
   "right_name": "...",
-  "should_merge": true or false,
   "canonical_name": "..."
 }"""
 
-USER_PROMPT_TEMPLATE = """Here are the name pairs to check.
+USER_PROMPT_TEMPLATE = """Here is the list of entity names to check:
 
 {payload_json}
 

@@ -85,7 +85,7 @@ MATCH (source:Entity {canonical_name: relationship_row.source_entity_name})
 MATCH (target:Entity {canonical_name: relationship_row.target_entity_name})
 MERGE (source)-[relationship:RELATES_TO {
     relationship_type: relationship_row.relationship_type,
-    document_id: relationship_row.document_id,
+    document_id: $document_id,
     chunk_id: relationship_row.chunk_id
 }]->(target)
 SET relationship.evidence_text = relationship_row.evidence_text
@@ -108,7 +108,10 @@ async def save_entity_nodes_and_relationships(
     """This function saves all the best names and how they connect into our graph database, so we can search through them later."""
     await client.execute_query(ENTITY_WRITE_QUERY, {"entities": graph_write_payload["entities"]})
     await client.execute_query(MENTION_WRITE_QUERY, {"mentions": graph_write_payload["mentions"]})
-    await client.execute_query(RELATIONSHIP_WRITE_QUERY, {"relationships": graph_write_payload["relationships"]})
+    await client.execute_query(RELATIONSHIP_WRITE_QUERY, {
+        "relationships": graph_write_payload["relationships"],
+        "document_id": graph_write_payload["document_id"]
+    })
 
 
 # ─── Read ─────────────────────────────────────────────────────────────────────

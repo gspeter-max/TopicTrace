@@ -11,7 +11,8 @@ def test_rewrite_graph_results_to_canonical_entities_updates_relationship_endpoi
             relationships=[RawGraphRelationship(source_entity_name="Mr Musk", relationship_type="RELATED_TO", target_entity_name="Tesla", evidence_text="Mr Musk leads Tesla.", chunk_id="doc::0")],
         )
     ]
-    canonical_name_map = {"Mr Musk": "Elon Musk", "Tesla": "Tesla"}
+    # New format from resolve_entities_for_graph: {canonical_name: [raw_names]}
+    canonical_name_map = {"Elon Musk": ["Mr Musk"], "Tesla": []}
 
     rewritten = rewrite_graph_results_to_canonical_entities(raw_results, canonical_name_map)
 

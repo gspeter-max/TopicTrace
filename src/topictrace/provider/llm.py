@@ -8,11 +8,12 @@ import httpx
 _common_headers = {"Accept-Encoding": "identity"}  # no gzip — gateway sends broken compressed responses
 
 
-def get_llm(provider: Literal["DEEPSEEK_AI", "MISTRAL_AI"] = 'DEEPSEEK_AI'):
+def get_llm(provider: Literal["DEEPSEEK_AI", "MISTRAL_AI"] | None = None):
+    resolved_provider = provider or settings.DEFAULT_LLM_PROVIDER
     http_client = httpx.Client(headers=_common_headers, timeout=settings.LLM_CLIENT_TIMEOUT_SECONDS)
     http_async_client = httpx.AsyncClient(headers=_common_headers, timeout=settings.LLM_CLIENT_TIMEOUT_SECONDS)
     
-    config = getattr(settings.LLM_CONFIG, provider)
+    config = getattr(settings.LLM_CONFIG, resolved_provider)
         
     return ChatOpenAI(
         base_url=config.LLM_BASE_URL,
@@ -26,7 +27,7 @@ def get_llm(provider: Literal["DEEPSEEK_AI", "MISTRAL_AI"] = 'DEEPSEEK_AI'):
                 "thinking": True,
                 "reasoning_effort": "high"
             }
-        } if provider == "DEEPSEEK_AI" else None
+        } if resolved_provider == "DEEPSEEK_AI" else None
     )
 
 

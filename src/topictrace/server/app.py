@@ -13,11 +13,12 @@ from topictrace.server.routes.rag.retrieveAPI import retrieveRouter
  
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    """initilize databases on startup, cleanup on shutdown."""
-    try: 
+    """Initialize databases on startup, clean up on shutdown."""
+    neo4j_client: Neo4jClient | None = None
+    try:
         init_postgres_db()
         print("[DATABASE][POSTGRES] database is created")
-        
+
         neo4j_client = Neo4jClient(
             settings.DATABASE_CONFIG.NEO4J.NEO4J_URI,
             settings.DATABASE_CONFIG.NEO4J.NEO4J_USER,
@@ -26,12 +27,12 @@ async def lifespan(_app: FastAPI):
         await create_vector_index(neo4j_client, settings.NEO4J_INDEX_NAME, settings.EMBEDDING_DIM)
         print("[DATABASE][NEO4J] database is created")
     except Exception as e:
-        log.warning("[DATABASE] database fail to initilize")
-    
-    finally: 
-        neo4j_client.close() 
+        log.warning("[DATABASE] database fail to initilize", error=str(e))
 
-    yield
+    yield  # app runs here; code after yield is shutdown
+
+    if neo4j_client is not None:
+        await neo4j_client.close()
 
 
 app = FastAPI(title="TopicTrace", lifespan=lifespan)
