@@ -67,11 +67,10 @@ async def extract_chunk_graph_data_in_parallel(
 
 
 async def resolve_entities_for_graph(
-        raw_chunk_graph_results: list[Any], 
-        existing_entity : set[str],
-        llm_provider: Literal["MISTRAL_AI","DEEPSEEK_AI"]  = settings.DEFAULT_LLM_PROVIDER
+        raw_chunk_graph_results: list[ChunkGraphExtractionResult], 
+        existing_entity: set[str],
+        llm_provider: Literal["MISTRAL_AI","DEEPSEEK_AI"] = settings.DEFAULT_LLM_PROVIDER
     ) -> dict[str, dict[str, Any]]:
-
     """
     Collapses raw entity name variants into one canonical name per real-world entity.
 
@@ -80,58 +79,91 @@ async def resolve_entities_for_graph(
     - Stage 2 (split): score ≥ HIGH_THRESHOLD → auto-merge; rest → LLM disambiguation.
     Existing DB entities (``existing_entity``) are excluded from new canonical creation.
 
+    It creates and returns two mappings concurrently:
+    1. canonical_name_by_raw_name: A dict mapping canonical names to their list of aliases.
+    2. canonical_by_alias: A flat lookup dictionary mapping every entity name (canonical
+       or alias) directly to its canonical name.
+
     Args:
         raw_chunk_graph_results: Output of ``extract_chunk_graph_data_in_parallel``.
         existing_entity: Canonical names already in Neo4j for this document.
         llm_provider: LLM provider to use.
     Returns:
-        ``{"canonical_name_by_raw_name": {canonical: [raw, ...]}}`` covering all entity
-        and relationship participants across all chunks.
+        A dictionary containing:
+        - "canonical_name_by_raw_name": dict[str, list[str]]
+        - "canonical_by_alias": dict[str, str]
     """
-
-    unique_entitys: set[str]= existing_entity.copy() 
+    unique_entities: set[str] = existing_entity.copy()
     for res in raw_chunk_graph_results:
         for e in res.entities:
-            unique_entitys.add(" ".join(e.entity_name.strip().split()))
+            unique_entities.add(" ".join(e.entity_name.strip().split()))
         for r in res.relationships:
-            unique_entitys.add(" ".join(r.source_entity_name.strip().split()))
-            unique_entitys.add(" ".join(r.target_entity_name.strip().split()))
+            unique_entities.add(" ".join(r.source_entity_name.strip().split()))
+            unique_entities.add(" ".join(r.target_entity_name.strip().split()))
             
-    if not unique_entitys:
-        return {"canonical_name_by_raw_name": {}}
+    if not unique_entities:
+        return {
+            "canonical_name_by_raw_name": {},
+            "canonical_by_alias": {}
+        }
         
-    canonical_map : dict[str, list[str]] = defaultdict(list)
-    fuzzy_candidates, left_candidates = find_fuzzy_merge_candidates(unique_entitys)
-    same_pairs, diff_entitys = split_clear_cases_from_ambiguous_cases(
-        [(l, r, settings.ENTITY_RESOLUTION_DEFAULT_CANDIDATE_SCORE) for l, r in fuzzy_candidates]
-    )
-    
-    left_candidates: set[str] = left_candidates.union(diff_entitys) 
+    canonical_map: dict[str, list[str]] = defaultdict(list)
+    canonical_by_alias: dict[str, str] = {}
 
-    client = get_llm(llm_provider)
-    decisions = await resolve_ambiguous_entity_pairs(
-        llm_client=client, 
-        ambiguous_pairs= left_candidates
-    ) 
-    
-    for decision in decisions:
-        canonical_map[decision.canonical_name] = [ decision.left_name, decision.right_name ]
+    try:
+        fuzzy_candidates, left_candidates = find_fuzzy_merge_candidates(unique_entities)
+        same_pairs, diff_entities = split_clear_cases_from_ambiguous_cases(
+            [(l, r, settings.ENTITY_RESOLUTION_DEFAULT_CANDIDATE_SCORE) for l, r in fuzzy_candidates]
+        )
+        
+        left_candidates = left_candidates.union(diff_entities) 
 
-    left_candidates = left_candidates.difference(set(canonical_map.keys()))
-    left_candidates = left_candidates.difference(existing_entity)
-    
-    for entity in left_candidates:
-        canonical_map[entity] = [] 
+        client = get_llm(llm_provider)
+        decisions = await resolve_ambiguous_entity_pairs(
+            llm_client=client, 
+            ambiguous_pairs=left_candidates
+        ) 
+        
+        for decision in decisions:
+            canonical_map[decision.canonical_name] = [decision.left_name, decision.right_name]
+            canonical_by_alias[decision.canonical_name] = decision.canonical_name
+            canonical_by_alias[decision.left_name] = decision.canonical_name
+            canonical_by_alias[decision.right_name] = decision.canonical_name
 
-    for l, r, _ in same_pairs:
-        if l in canonical_map.keys(): 
-            canonical_map[l].append(r)
-        elif r in canonical_map.keys(): 
-            canonical_map[r].append(l)
-        else : 
-            canonical_map[l] = [r]
+        left_candidates = left_candidates.difference(set(canonical_map.keys()))
+        left_candidates = left_candidates.difference(existing_entity)
+        
+        for entity in left_candidates:
+            canonical_map[entity] = [] 
+            canonical_by_alias[entity] = entity
 
-    return {"canonical_name_by_raw_name": canonical_map}
+        for l, r, _ in same_pairs:
+            if l in canonical_map.keys(): 
+                canonical_map[l].append(r)
+                canonical_by_alias[r] = l
+            elif r in canonical_map.keys(): 
+                canonical_map[r].append(l)
+                canonical_by_alias[l] = r
+            else: 
+                canonical_map[l] = [r]
+                canonical_by_alias[l] = l
+                canonical_by_alias[r] = l
+
+    except Exception as exc:
+        log.error(
+            "Error occurred during entity resolution. Falling back to identity mapping.",
+            error=str(exc)
+        )
+        canonical_map.clear()
+        canonical_by_alias.clear()
+        for entity in unique_entities:
+            canonical_map[entity] = []
+            canonical_by_alias[entity] = entity
+
+    return {
+        "canonical_name_by_raw_name": dict(canonical_map),
+        "canonical_by_alias": canonical_by_alias
+    }
 
 
 async def persist_document_graph(
@@ -265,6 +297,7 @@ async def ingest_document_graph(
     canonical_payload = rewrite_graph_results_to_canonical_entities(
         raw_results,
         resolution_result["canonical_name_by_raw_name"],
+        canonical_by_alias=resolution_result.get("canonical_by_alias")
     )
     
     graph_write_payload = build_neo4j_graph_write_payload(
