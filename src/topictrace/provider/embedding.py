@@ -1,5 +1,6 @@
 import asyncio
 import json
+from typing import overload
 
 import requests
 
@@ -26,6 +27,12 @@ class embeddingModel:
             max_concurrency or settings.EMBEDDING_CONFIG.MAX_CONCURRENCY
         )
         self.task = settings.EMBEDDING_CONFIG.JINA_EMBEDDING_TASK
+
+    @overload
+    async def generateEmebedding(self, texts: str) -> list[float]: ...
+
+    @overload
+    async def generateEmebedding(self, texts: list[str]) -> list[list[float]]: ...
 
     async def generateEmebedding(
         self, texts: str | list[str]
