@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, LiteralString, cast
 
 from topictrace.db.neo4j import Neo4jClient
 
@@ -25,7 +25,7 @@ async def create_vector_index(
         }}
     }}
     """
-    await client.execute_query(query)
+    await client.execute_query(cast(LiteralString, query))
 
 
 # ─── Write ────────────────────────────────────────────────────────────────────
@@ -35,7 +35,7 @@ async def save_chunk(
     client: Neo4jClient,
     chunk: dict[str, Any],
     embedding: list[float],
-    entity_ids: list[str] = None,  # This is our new list of codes
+    entity_ids: list[str] | None = None,  # This is our new list of codes
 ) -> None:
     """
     Upserts a single Chunk node with its contextualized text and embedding vector.
