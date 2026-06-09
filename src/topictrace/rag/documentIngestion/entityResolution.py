@@ -101,7 +101,9 @@ async def resolve_ambiguous_entity_pairs(
     response = await bound_client.ainvoke(
         build_entity_resolution_messages(ambiguous_pairs)
     )
-    response_payload = json.loads(response.content or "{}")
+    content = response.content
+    content_str = content if isinstance(content, str) else ""
+    response_payload = json.loads(content_str or "{}")
 
     return [
         EntityResolutionDecision(**decision_row)

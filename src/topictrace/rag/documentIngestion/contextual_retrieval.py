@@ -63,7 +63,8 @@ async def generate_chunk_context(
         bind_kwargs["model"] = model
     bound_client = client.bind(**bind_kwargs)
     response = await bound_client.ainvoke(messages)
-    context = (response.content or "").strip()
+    content = response.content
+    context = content.strip() if isinstance(content, str) else ""
     contextualized_text = f"{context}\n\n{chunk['text']}"
     return {
         **chunk,

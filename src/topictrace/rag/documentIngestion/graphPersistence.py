@@ -125,37 +125,6 @@ def rewrite_graph_results_to_canonical_entities(
         entities=rewritten_entities, relationships=rewritten_relationships
     )
 
-
-def merge_duplicate_relationship_payloads(
-    relationship_payloads: list[dict[str, Any]],
-) -> list[dict[str, Any]]:
-    """
-    Deduplicates relationships with the same (source, type, target) triple.
-
-    The first occurrence wins; subsequent duplicates are silently dropped.
-    This prevents Neo4j MERGE from creating phantom duplicates when the same
-    relationship is extracted from multiple overlapping chunks.
-
-    Args:
-        relationship_payloads: Raw list of relationship dicts, potentially
-                               containing duplicates.
-
-    Returns:
-        Deduplicated list preserving insertion order of first occurrences.
-    """
-    seen: dict[tuple[str, str, str], dict[str, Any]] = {}
-
-    for rel in relationship_payloads:
-        key = (
-            rel["source_entity_name"],
-            rel["relationship_type"],
-            rel["target_entity_name"],
-        )
-        seen.setdefault(key, rel)
-
-    return list(seen.values())
-
-
 def build_neo4j_graph_write_payload(
     document_id: str,
     canonical_entities: list[dict[str, Any]],
@@ -191,18 +160,18 @@ def build_neo4j_graph_write_payload(
 
     unique_entities: dict[str, dict[str, Any]] = {}
     mentions: list[dict[str, Any]] = []
-    _chunk_to_entity_ids: defaultdict[str, set[str]] = defaultdict(set)
+    chunk_to_entity_ids: defaultdict[str, list[str]] = defaultdict(list)
 
     for entity in canonical_entities:
         clean_name: str = entity["canonical_name"]
 
-        if not clean_name or not clean_name.strip():
+        if not clean_name.strip():
             log.warning(
                 "Skipping entity with empty canonical_name in document %r.", document_id
             )
             continue
 
-        entity_id = generate_stable_entity_id(clean_name)
+        entity_id = generate_stable_entity_id(clean_name).strip() 
 
         if clean_name not in unique_entities:
             unique_entities[clean_name] = {
@@ -220,28 +189,21 @@ def build_neo4j_graph_write_payload(
                 "evidence_text": entity["evidence_text"],
             }
         )
-
-        _chunk_to_entity_ids[entity["chunk_id"]].add(entity_id)
-
-    chunk_to_entity_ids: dict[str, list[str]] = {
-        k: list(v) for k, v in _chunk_to_entity_ids.items()
-    }
-    merged_relationships = merge_duplicate_relationship_payloads(
-        rewritten_relationships
-    )
+        if entity_id not in chunk_to_entity_ids[entity["chunk_id"]]:
+            chunk_to_entity_ids[entity["chunk_id"]].append(entity_id)
 
     log.debug(
         "Built graph payload for document %r: %d unique entities, %d mentions, %d relationships.",
         document_id,
         len(unique_entities),
         len(mentions),
-        len(merged_relationships),
+        len(rewritten_relationships),
     )
 
     return {
         "document_id": document_id,
         "entities": list(unique_entities.values()),
         "mentions": mentions,
-        "relationships": merged_relationships,
+        "relationships": rewritten_relationships,
         "chunk_to_entity_ids": chunk_to_entity_ids,
     }

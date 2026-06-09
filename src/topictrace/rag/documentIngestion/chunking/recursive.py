@@ -10,7 +10,7 @@ from __future__ import annotations
 from functools import lru_cache
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from transformers import XLMRobertaTokenizerFast
+from transformers import XLMRobertaTokenizerFast  # type: ignore
 
 from topictrace import settings
 

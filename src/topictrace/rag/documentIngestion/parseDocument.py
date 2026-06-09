@@ -53,7 +53,7 @@ def parse_document(file_path: str) -> list[dict]:
 
     if result.text and result.text.pages:
         # Build a lookup: page_number → list of item objects
-        items_by_page: dict[int, list] = {}
+        items_by_page: dict[int, object] = {}
         if result.items and result.items.pages:
             for items_page in result.items.pages:
                 page_num = items_page.page_number

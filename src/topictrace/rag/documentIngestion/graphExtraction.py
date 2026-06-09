@@ -46,5 +46,7 @@ async def extract_graph_data_from_chunk(
         bind_kwargs["model"] = model
     bound_client = llm_client.bind(**bind_kwargs)
     response = await bound_client.ainvoke(build_graph_extraction_messages(chunk))
-    response_payload = json.loads(response.content or "{}")
+    content = response.content
+    content_str = content if isinstance(content, str) else ""
+    response_payload = json.loads(content_str or "{}")
     return ChunkGraphExtractionResult(**response_payload)
