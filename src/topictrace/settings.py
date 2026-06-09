@@ -61,13 +61,13 @@ EMBEDDING_CONFIG = embedding_model_config(
 
 DATABASE_CONFIG = database_config(
     NEO4J=neo4j_config(
-        NEO4J_URI=os.getenv("NEO4J_URI"),
-        NEO4J_USER=os.getenv("NEO4J_USER"),
-        NEO4J_PASSWORD=os.getenv("NEO4J_PASSWORD"),
+        NEO4J_URI=os.getenv("NEO4J_URI", ""),
+        NEO4J_USER=os.getenv("NEO4J_USER", ""),
+        NEO4J_PASSWORD=os.getenv("NEO4J_PASSWORD", ""),
     ),
     POSTGRES=postgres_config(
-        POSTGRES_URI=os.getenv("POSTGRES_URI"),
-        POSTGRES_PASSWORD=os.getenv("POSTGRES_PASSWORD"),
+        POSTGRES_URI=os.getenv("POSTGRES_URI", ""),
+        POSTGRES_PASSWORD=os.getenv("POSTGRES_PASSWORD", ""),
     ),
 )
 
@@ -101,7 +101,7 @@ _required = {
     "LLM_API_KEY": LLM_CONFIG.MISTRAL_AI.LLM_API_KEY
     or LLM_CONFIG.DEEPSEEK_AI.LLM_API_KEY,
     "TAVILY_API_KEY": TAVILY_API_KEY,
-    "DATABASE_URL": DATABASE_URL,
+    "POSTGRES_URI": DATABASE_CONFIG.POSTGRES.POSTGRES_URI,
     "LLAMA_PARSE_APIKEY": LLAMA_PARSE_APIKEY,
     "JINA_API_KEY": EMBEDDING_CONFIG.JINA_API_KEY,
     "VOYAGE_API_KEY": RERANKER_CONFIG.VOYAGE_API_KEY,
