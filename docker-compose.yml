@@ -26,6 +26,7 @@ services:
     volumes:
       - ./src:/app/src
       - ./pyproject.toml:/app/pyproject.toml
+      - ./data/pankajkumar.pdf:/app/pankajkumar.pdf
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health/live"]

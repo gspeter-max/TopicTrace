@@ -4,7 +4,9 @@ from psycopg_pool import ConnectionPool
 
 from topictrace import log, settings
 
-pool = ConnectionPool(settings.DATABASE_URL, min_size=4, max_size=10)
+pool = ConnectionPool(
+    settings.DATABASE_CONFIG.POSTGRES.POSTGRES_URI, min_size=4, max_size=10
+)
 
 
 def generate_key_hash(key_part: str) -> str:

@@ -1,11 +1,13 @@
 """Central configuration and constants for TopicTrace."""
 
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 from pydantic import BaseModel
 
-load_dotenv()
+# Load .env explicitly from the project root directory
+load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
 
 class embedding_model_config(BaseModel):
@@ -84,7 +86,7 @@ LLM_CONFIG = AppSettings(
     DEEPSEEK_AI=llm_config(
         LLM_BASE_URL="https://integrate.api.nvidia.com/v1",
         LLM_MODEL="deepseek-ai/deepseek-v4-flash",
-        LLM_API_KEY=os.getenv("LLM_API_KEY", "").strip(),
+        LLM_API_KEY=os.getenv("DEEPSEEK_API_KEY", "").strip(),
     ),
     MISTRAL_AI=llm_config(
         LLM_BASE_URL="https://api.mistral.ai/v1",
@@ -95,7 +97,7 @@ LLM_CONFIG = AppSettings(
 
 
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
-DATABASE_URL = os.getenv("DATABASE_URL")
+
 
 _required = {
     "LLM_API_KEY": LLM_CONFIG.MISTRAL_AI.LLM_API_KEY

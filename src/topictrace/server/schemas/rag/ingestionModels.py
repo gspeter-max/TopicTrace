@@ -10,7 +10,6 @@ class IngestionRequest(BaseModel):
         ..., description="Absolute or relative path to the document to ingest."
     )
 
-
 class IngestionResponse(BaseModel):
     status: str = Field(..., description="'success' or 'error'.")
     message: str = Field(..., description="Human-readable result message.")

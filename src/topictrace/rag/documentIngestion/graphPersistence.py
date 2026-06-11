@@ -47,7 +47,7 @@ def rewrite_graph_results_to_canonical_entities(
     """
     if not isinstance(canonical_name_by_raw_name, dict):
         raise TypeError(
-            f"canonical_name_by_raw_name must be a dict, got {type(canonical_name_by_raw_name)!r}"
+                f"canonical_name_by_raw_name must be a dict, got {type(canonical_name_by_raw_name)!r}"
         )
 
     # Build the alias-to-canonical lookup dictionary if it was not pre-computed
@@ -91,7 +91,7 @@ def rewrite_graph_results_to_canonical_entities(
                     source_canonical not in canonical_name_by_raw_name or \
                     target_canonical not in canonical_name_by_raw_name
                 ):
-                    continue 
+                    continue
 
             # Deduplicate relationships by checking the (source, type, target) triple
             relationship_key = (source_canonical, relationship.relationship_type, target_canonical)
@@ -164,7 +164,7 @@ def build_neo4j_graph_write_payload(
             )
             continue
 
-        entity_id = generate_stable_entity_id(clean_name).strip() 
+        entity_id = generate_stable_entity_id(clean_name).strip()
 
         if clean_name not in unique_entities:
             unique_entities[clean_name] = {

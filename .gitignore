@@ -19,8 +19,8 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-
-rag/dockerHostedServices/neo4j
+neo4j/
+rag/dockerHostedServices/neo4j/
 # Virtual Environment
 .venv/
 venv/
@@ -54,5 +54,3 @@ graphify-out/
 
 # IDE / local configs
 .openclaude/
-
-

@@ -18,7 +18,7 @@ async def lifespan(_app: FastAPI):
     neo4j_client: Neo4jClient | None = None
     try:
         init_postgres_db()
-        print("[DATABASE][POSTGRES] database is created")
+        log.info("[DATABASE][POSTGRES] database is created")
 
         neo4j_client = Neo4jClient(
             settings.DATABASE_CONFIG.NEO4J.NEO4J_URI,
@@ -28,7 +28,7 @@ async def lifespan(_app: FastAPI):
         await create_vector_index(
             neo4j_client, settings.NEO4J_INDEX_NAME, settings.EMBEDDING_DIM
         )
-        print("[DATABASE][NEO4J] database is created")
+        log.info("[DATABASE][NEO4J] database is created")
     except Exception as e:
         log.warning("[DATABASE] database fail to initilize", error=str(e))
 
@@ -52,4 +52,3 @@ async def health_check() -> dict:
 
 # Import AFTER app is created — triggers @app.middleware registration
 from topictrace.server import middleware
-
