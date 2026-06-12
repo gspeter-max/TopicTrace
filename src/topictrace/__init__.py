@@ -9,6 +9,7 @@ The resulting 'log' object is used by all other modules to ensure consistent log
 
 import structlog
 from structlog.processors import CallsiteParameter, CallsiteParameterAdder
+from structlog.types import FilteringBoundLogger
 
 # Configure structlog with a clean, readable console output format.
 structlog.configure(
@@ -32,4 +33,4 @@ structlog.configure(
 )
 
 # Export a single global logger for the project.
-log = structlog.get_logger()
+log: FilteringBoundLogger = structlog.get_logger()

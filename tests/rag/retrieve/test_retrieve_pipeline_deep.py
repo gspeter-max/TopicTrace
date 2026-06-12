@@ -97,8 +97,8 @@ async def test_answer_node_injects_context_into_prompt():
             "topictrace.rag.documentRetrieve.graph.nodes.get_llm", return_value=mock_llm
         ) as mock_get_llm,
         patch(
-            "topictrace.rag.documentRetrieve.graph.nodes.build_final_answer_prompt",
-            side_effect=lambda ctx: f"PROMPT:{ctx}",
+            "topictrace.rag.documentRetrieve.graph.nodes.get_system_prompt",
+            side_effect=lambda prompt_type, input_vars: f"PROMPT:{input_vars['context_block']}",
         ) as mock_prompt,
     ):
         await answer_node(state)

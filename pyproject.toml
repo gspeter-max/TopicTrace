@@ -14,7 +14,7 @@ dependencies = [
     "langgraph>=1.2.2",
     "langchain-core>=1.4.0",
     "langchain-openai>=1.2.2",
-    "fastapi>=0.136.3",
+    "fastapi[standard]>=0.136.3",
     "uvicorn>=0.48.0",
     "psycopg[binary]>=3.3.4",
     "psycopg-pool>=3.3.1",
@@ -25,7 +25,9 @@ dependencies = [
     "pytest>=8.0.0",
     "respx>=0.21.0",
     "neo4j>=5.0.0",
-    "structlog>=23.3.0"
+    "structlog>=23.3.0",
+    "langgraph-checkpoint-postgres>=3.1.0",
+    "anyio>=4.13.0",
 ]
 
 [project.optional-dependencies]
@@ -50,4 +52,21 @@ markers = [
 filterwarnings = [
     "ignore:.*Using `httpx` with `starlette.testclient` is deprecated.*:DeprecationWarning"
 ]
+
+[tool.mypy]
+mypy_path = "src"
+explicit_package_bases = true
+namespace_packages = true
+
+[tool.pyright]
+typeCheckingMode = "strict"
+extraPaths = ["src"]
+reportUnknownMemberType = "none"
+reportUnknownVariableType = "none"
+reportUnknownArgumentType = "none"
+reportMissingModuleSource = "none"
+reportUnusedCallResult = "none"
+venvPath = "."
+venv = ".venv"
+
 

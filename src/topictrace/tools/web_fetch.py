@@ -1,6 +1,7 @@
 """Web fetch tool for TopicTrace using Jina Reader + LLM summarization."""
 
 import asyncio
+from typing import Any
 
 import httpx
 from langchain_core.tools import tool
@@ -15,7 +16,7 @@ from topictrace.tools.cache import (
 
 
 @tool
-async def web_fetch(url, query: str) -> list[dict]:
+async def web_fetch(url: str | list[str], query: str) -> list[dict[str, Any]]:
     """Fetch URLs via Jina Reader, summarize with LLM, cache results.
 
     Args:

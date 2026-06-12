@@ -335,7 +335,7 @@ async def test_answer_node_standard_path_calls_llm():
             "topictrace.rag.documentRetrieve.graph.nodes.get_llm", return_value=mock_llm
         ),
         patch(
-            "topictrace.rag.documentRetrieve.graph.nodes.build_final_answer_prompt",
+            "topictrace.rag.documentRetrieve.graph.nodes.get_system_prompt",
             return_value="prompt",
         ),
     ):

@@ -3,10 +3,7 @@ from typing import Any
 
 from langchain_core.language_models import BaseChatModel
 
-from topictrace.prompts.ingestion.extraction import (
-    SYSTEM_PROMPT,
-    USER_PROMPT_TEMPLATE,
-)
+from topictrace.prompts import get_system_prompt, get_user_prompt
 from topictrace.rag.documentIngestion.graphRelationshipSchema import (
     get_relationship_schema_prompt_text,
 )
@@ -20,14 +17,16 @@ def build_graph_extraction_messages(chunk: dict[str, Any]) -> list[dict[str, str
     return [
         {
             "role": "system",
-            "content": SYSTEM_PROMPT.format(
-                schema_text=get_relationship_schema_prompt_text()
+            "content": get_system_prompt(
+                "extraction",
+                {"schema_text": get_relationship_schema_prompt_text()},
             ),
         },
         {
             "role": "user",
-            "content": USER_PROMPT_TEMPLATE.format(
-                chunk_id=chunk["chunk_id"], chunk_text=chunk["text"]
+            "content": get_user_prompt(
+                "extraction",
+                {"chunk_id": chunk["chunk_id"], "chunk_text": chunk["text"]},
             ),
         },
     ]

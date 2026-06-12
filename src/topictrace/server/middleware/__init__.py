@@ -1,12 +1,13 @@
 import time
 import uuid
 from collections import defaultdict
+from collections.abc import Awaitable, Callable
 
 import structlog.contextvars
 from fastapi import Request
 from fastapi.exceptions import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
 from topictrace import log
 from topictrace.db.postgres.client import generate_key_hash, pool
@@ -18,7 +19,9 @@ from topictrace.server.app import app
 
 
 @app.middleware("http")
-async def request_id_middleware(request: Request, call_next):
+async def request_id_middleware(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
     """Generate or extract request ID, bind to structlog context, return in response."""
     incoming_id = request.headers.get("X-Request-ID")
     req_id = incoming_id if incoming_id else uuid.uuid4().hex[:12]
@@ -39,8 +42,10 @@ _rate_limit_dict = defaultdict(list)
 
 
 @app.middleware("http")
-async def rate_limit(request: Request, call_next):
-    client_host = request.client.host
+async def rate_limit(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
+    client_host = request.client.host if request.client else "127.0.0.1"
     now = time.time()
 
     _rate_limit_dict[client_host] = [
@@ -69,14 +74,25 @@ app.add_middleware(
 # API key authentication
 # ---------------------------------------------------------------------------
 
-_SKIP_AUTH_PATHS = ("/health/live", "/api-keys")
+
+_SKIP_AUTH_PATHS = (
+    "/health/live",
+    "/api-keys",
+    "/docs",
+    "/openapi.json",
+    "/retrieve/query",
+    "/research",
+)
 
 
 @app.middleware("http")
-async def authenticate(request: Request, call_next):
+async def authenticate(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
     """Check Authorization header against api_keys table."""
     if request.url.path in _SKIP_AUTH_PATHS:
         return await call_next(request)
+    print(f"{request.url.path} not in _SKIP_AUTH_PATHS : {request} {_SKIP_AUTH_PATHS} ")
 
     auth_header = request.headers.get("authorization")
     if not auth_header:

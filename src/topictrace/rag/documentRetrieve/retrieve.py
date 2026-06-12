@@ -8,8 +8,9 @@ the final state back to QueryResponse.
 All pipeline logic lives in documentRetrieve/graph/.
 """
 
+from topictrace import settings
+from topictrace.db.neo4j import Neo4jClient
 from topictrace.rag.documentRetrieve.graph.build_graph import build_rag_graph
-from topictrace.rag.documentRetrieve.graph.nodes import _get_neo4j_client
 from topictrace.rag.documentRetrieve.graph.state import RAGState
 from topictrace.server.schemas.rag.retrieveModels import QueryRequest, QueryResponse
 
@@ -24,7 +25,11 @@ async def handle_query(request: QueryRequest) -> QueryResponse:
     Creates the Neo4j client, invokes the LangGraph state machine,
     then closes the client regardless of success or failure.
     """
-    client = _get_neo4j_client()
+    client = Neo4jClient(
+        settings.DATABASE_CONFIG.NEO4J.NEO4J_URI,
+        settings.DATABASE_CONFIG.NEO4J.NEO4J_USER,
+        settings.DATABASE_CONFIG.NEO4J.NEO4J_PASSWORD,
+    )
     try:
         final_state = await _rag_graph.ainvoke(
             RAGState(

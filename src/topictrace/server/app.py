@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from topictrace import log, settings
+from topictrace.agents.graph import build_graph
 from topictrace.db.neo4j import Neo4jClient
 from topictrace.db.neo4j.cypherQuerys import create_vector_index
 from topictrace.db.postgres.client import init_postgres_db
@@ -13,7 +14,7 @@ from topictrace.server.routes.rag.retrieveAPI import retrieveRouter
 
 
 @asynccontextmanager
-async def lifespan(_app: FastAPI):
+async def lifespan(app: FastAPI):
     """Initialize databases on startup, clean up on shutdown."""
     neo4j_client: Neo4jClient | None = None
     try:
@@ -29,6 +30,8 @@ async def lifespan(_app: FastAPI):
             neo4j_client, settings.NEO4J_INDEX_NAME, settings.EMBEDDING_DIM
         )
         log.info("[DATABASE][NEO4J] database is created")
+        app.state.graph = await build_graph()
+
     except Exception as e:
         log.warning("[DATABASE] database fail to initilize", error=str(e))
 
@@ -46,9 +49,8 @@ app.include_router(retrieveRouter)
 
 
 @app.get("/health/live")
-async def health_check() -> dict:
+async def health_check() -> dict[str, str]:
     return {"status": "ok"}
 
 
-# Import AFTER app is created — triggers @app.middleware registration
-from topictrace.server import middleware
+import topictrace.server.middleware  # noqa: F401, E402 # pyright: ignore[reportUnusedImport]

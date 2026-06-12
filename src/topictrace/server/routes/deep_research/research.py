@@ -3,10 +3,12 @@ import json
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from langchain_core.messages import HumanMessage
+from langgraph.graph.state import RunnableConfig
 
 from topictrace import log
 from topictrace.agents.graph import app
-from topictrace.prompts.research_agent import get_user_prompt
+from topictrace.agents.state import ResearchState
+from topictrace.prompts import get_user_prompt
 from topictrace.server.schemas.deep_research.research import (
     ResearchRequest,
     ResearchResponse,
@@ -18,17 +20,27 @@ research_router = APIRouter()
 @research_router.post("/research", response_model=ResearchResponse)
 async def research(request_input: ResearchRequest):
     try:
-        state = {
+        state: ResearchState = {
             "messages": [
                 HumanMessage(
-                    content=get_user_prompt(request_input.query, request_input.depth)
+                    content=get_user_prompt(
+                        "research",
+                        {"query": request_input.query, "depth": request_input.depth},
+                    )
                 )
             ],
         }
-        response = await app.ainvoke(state)
+        config: RunnableConfig = {"configurable": {"thread_id": 1}}
+        response = await app.ainvoke(state, config=config)
         return ResearchResponse(answer=response["messages"][-1].content)
+
     except Exception as e:
-        log.exception(f"gettings error : {e}")
+        log.error(
+            "getting a error",
+            error=str(e),
+            exc_type=type(e).__init__,
+            exc_info=True,
+        )
         raise HTTPException(
             status_code=500, detail=f"error in research agent {e}"
         ) from e
@@ -38,10 +50,17 @@ async def streaming_yeild_generater(query: str, depth: str = "standard"):
     """ "Yields SSE-formatted tokens as LLM produces them."""
 
     try:
-        state = {
-            "messages": [HumanMessage(content=get_user_prompt(query, depth))],
+        state: ResearchState = {
+            "messages": [
+                HumanMessage(
+                    content=get_user_prompt(
+                        "research", {"query": query, "depth": depth}
+                    )
+                )
+            ],
         }
-        async for event in app.astream_events(state, version="v2"):
+        config: RunnableConfig = {"configurable": {"thread_id": 1}}
+        async for event in app.astream_events(state, version="v2", config=config):
             if event["event"] == "on_chat_model_stream":
                 token = event["data"]["chunk"].content
                 if token:

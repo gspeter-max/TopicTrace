@@ -6,10 +6,7 @@ from langchain_core.language_models import BaseChatModel
 from rapidfuzz import fuzz, process
 
 from topictrace import settings
-from topictrace.prompts.ingestion.resolution import (
-    SYSTEM_PROMPT,
-    USER_PROMPT_TEMPLATE,
-)
+from topictrace.prompts import get_system_prompt, get_user_prompt
 from topictrace.rag.documentIngestion.models.graphExtractionModels import (
     EntityResolutionDecision,
 )
@@ -73,12 +70,13 @@ def build_entity_resolution_messages(entity_names: set[str]) -> list[dict[str, A
     return [
         {
             "role": "system",
-            "content": SYSTEM_PROMPT,
+            "content": get_system_prompt("resolution"),
         },
         {
             "role": "user",
-            "content": USER_PROMPT_TEMPLATE.format(
-                payload_json=json.dumps(payload, indent=2)
+            "content": get_user_prompt(
+                "resolution",
+                {"payload_json": json.dumps(payload, indent=2)},
             ),
         },
     ]

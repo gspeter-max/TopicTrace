@@ -1,6 +1,7 @@
 """Web search tool for TopicTrace using Tavily API."""
 
 import asyncio
+from typing import Any
 
 from langchain_core.tools import tool
 from tavily import AsyncTavilyClient
@@ -8,7 +9,7 @@ from tavily import AsyncTavilyClient
 from topictrace import log, settings
 
 
-def _extract_single_result(item: dict) -> dict:
+def _extract_single_result(item: dict[str, Any]) -> dict[str, Any]:
     """Extract clean result dict from a Tavily search result item."""
     return {
         "title": item.get("title", "No Title"),
@@ -18,7 +19,7 @@ def _extract_single_result(item: dict) -> dict:
 
 
 @tool
-async def web_search(query: str | list[str]) -> list[dict]:
+async def web_search(query: str | list[str]) -> list[dict[str, Any]]:
     """Search the web using Tavily API, save the results, and return them as a list of dicts.
 
     Args:

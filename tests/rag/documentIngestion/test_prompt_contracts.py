@@ -1,12 +1,8 @@
-from topictrace.prompts.ingestion.extraction import SYSTEM_PROMPT as EXTRACTION_SYSTEM
-from topictrace.prompts.ingestion.extraction import (
-    USER_PROMPT_TEMPLATE as EXTRACTION_USER,
-)
-from topictrace.prompts.ingestion.resolution import SYSTEM_PROMPT as RESOLUTION_SYSTEM
+from topictrace.prompts import get_system_prompt, get_user_prompt
 
 
 def test_extraction_prompt_mentions_related_to_as_fallback_and_evidence_text():
-    prompt = EXTRACTION_SYSTEM
+    prompt = get_system_prompt("extraction", {"schema_text": "MEMBER_OF, USES"})
 
     assert "RELATED_TO" in prompt
     assert "Never invent a new relationship type" in prompt
@@ -14,14 +10,14 @@ def test_extraction_prompt_mentions_related_to_as_fallback_and_evidence_text():
 
 
 def test_resolution_prompt_requires_exact_json_shape():
-    prompt = RESOLUTION_SYSTEM
+    prompt = get_system_prompt("resolution")
 
     assert "decisions" in prompt
     assert "canonical_name" in prompt
 
 
 def test_extraction_system_prompt_defines_explicit_json_keys():
-    prompt = EXTRACTION_SYSTEM
+    prompt = get_system_prompt("extraction", {"schema_text": "MEMBER_OF, USES"})
 
     # Check for entity keys
     assert "entity_name" in prompt
@@ -35,7 +31,13 @@ def test_extraction_system_prompt_defines_explicit_json_keys():
 
 
 def test_extraction_user_prompt_contains_one_shot_example():
-    prompt = EXTRACTION_USER
+    prompt = get_user_prompt(
+        "extraction",
+        {
+            "chunk_id": "doc1::0",
+            "chunk_text": "Alice engineers software using Python at Neo4j.",
+        },
+    )
 
     assert "Example Output Format" in prompt or "Example" in prompt
     assert "Alice" in prompt  # Basic check that example content exists

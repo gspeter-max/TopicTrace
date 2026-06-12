@@ -11,7 +11,7 @@ import json
 from typing import Literal
 
 from topictrace import log
-from topictrace.prompts.router_intent_classifier import ROUTER_PROMPT
+from topictrace.prompts import get_system_prompt
 from topictrace.provider.llm import get_llm
 
 IntentType = Literal["simple", "complex"]
@@ -33,7 +33,7 @@ async def classify_intent(query: str) -> IntentType:
 
         response = await bound_llm.ainvoke(
             [
-                {"role": "system", "content": ROUTER_PROMPT},
+                {"role": "system", "content": get_system_prompt("router")},
                 {"role": "user", "content": query},
             ]
         )
@@ -43,11 +43,12 @@ async def classify_intent(query: str) -> IntentType:
             log.error("Router received empty response from LLM, defaulting to 'simple'")
             return "simple"
 
-        data = json.loads(content)
+        content_str = content if isinstance(content, str) else json.dumps(content)
+        data = json.loads(content_str)
         intent = data.get("intent", "").lower()
 
         if intent in ("simple", "complex"):
-            return intent  # type: ignore
+            return intent
 
         log.warning(
             "Router received unexpected intent, defaulting to 'simple'",

@@ -7,11 +7,12 @@ to justify graph escalation.
 """
 
 import json
+from typing import cast
 
 from pydantic import BaseModel, Field
 
 from topictrace import log
-from topictrace.prompts.grader_chunk_evaluator import GRADER_PROMPT
+from topictrace.prompts import get_system_prompt
 from topictrace.provider.llm import get_llm
 
 
@@ -49,7 +50,7 @@ async def grade_chunks(query: str, chunks: list[str]) -> GraderResult:
 
         response = await bound_llm.ainvoke(
             [
-                {"role": "system", "content": GRADER_PROMPT},
+                {"role": "system", "content": get_system_prompt("grader")},
                 {"role": "user", "content": user_content},
             ]
         )
@@ -62,8 +63,8 @@ async def grade_chunks(query: str, chunks: list[str]) -> GraderResult:
             return GraderResult(
                 sufficient=False, reason="Empty LLM response.", answer=""
             )
-
-        data = json.loads(content)
+        
+        data = json.loads(cast(str, content))      
         result = GraderResult(
             sufficient=bool(data.get("sufficient", False)),
             reason=str(data.get("reason", "No reason provided by LLM.")),

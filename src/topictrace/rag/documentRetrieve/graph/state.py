@@ -5,10 +5,12 @@ One TypedDict that flows through the entire LangGraph.
 Every node reads fields it needs and returns only the fields it modifies.
 """
 
-from typing_extensions import TypedDict
+from typing import Any
+
+from pydantic import BaseModel
 
 
-class RAGState(TypedDict, total=False):
+class RAGState(BaseModel):
     # ── Input (set before graph.ainvoke) ──────────────────────────────────────
     query: str
     top_k: int
@@ -18,7 +20,7 @@ class RAGState(TypedDict, total=False):
     intent: str  # "simple" or "complex"
 
     # ── Set by vector_search node ─────────────────────────────────────────────
-    raw_chunks: list[dict]  # Full chunk dicts from Neo4j
+    raw_chunks: list[dict[str, Any]]  # Full chunk dicts from Neo4j
     vector_texts: list[str]  # Extracted full_context strings
 
     # ── Set by grade_chunks node (simple path only) ───────────────────────────

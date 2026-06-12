@@ -4,6 +4,18 @@ All notable changes to **TopicTrace** are documented in this file.
 
 ---
 
+## [0.2.1] — 2026-06-11
+
+### 🎯 Summary
+Codebase standardization, typing improvements, and ingestion/retrieval pipeline bug fixes.
+
+### ✅ Changes
+- **Linting & Typing**: Integrated Pyright and Ruff, formatted codebase, and resolved type errors across `settings.py`, `cypherQuerys.py`, and the ingestion package. Added `@overload` to `generateEmbedding`.
+- **Ingestion Fixes**: Implemented alias-to-canonical lookups, fixed relationship/entity resolution bugs, implemented `entity_id` persistence and querying, and condensed docstrings.
+- **Retrieval Fixes**: Resolved LangGraph `AttributeError` in state retrieval, and updated Docker/settings configurations.
+
+---
+
 ## [0.2.0] — 2026-06-07
 
 ### 🎯 Summary
