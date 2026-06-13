@@ -1,12 +1,11 @@
 import json
-
-from fastapi import APIRouter, HTTPException
+from typing import Any
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from langchain_core.messages import HumanMessage
-from langgraph.graph.state import RunnableConfig
+from langgraph.graph.state import RunnableConfig # type: ignore[import] 
 
 from topictrace import log
-from topictrace.agents.graph import app
 from topictrace.agents.state import ResearchState
 from topictrace.prompts import get_user_prompt
 from topictrace.server.schemas.deep_research.research import (
@@ -18,7 +17,7 @@ research_router = APIRouter()
 
 
 @research_router.post("/research", response_model=ResearchResponse)
-async def research(request_input: ResearchRequest):
+async def research(request_input: ResearchRequest, r: Request):
     try:
         state: ResearchState = {
             "messages": [
@@ -30,8 +29,9 @@ async def research(request_input: ResearchRequest):
                 )
             ],
         }
-        config: RunnableConfig = {"configurable": {"thread_id": 1}}
-        response = await app.ainvoke(state, config=config)
+        config: RunnableConfig = {"configurable": {"thread_id": "thread_id_1"}}
+        
+        response = await r.app.state.deepResearchGraph.ainvoke(state, config=config)
         return ResearchResponse(answer=response["messages"][-1].content)
 
     except Exception as e:
@@ -46,7 +46,7 @@ async def research(request_input: ResearchRequest):
         ) from e
 
 
-async def streaming_yeild_generater(query: str, depth: str = "standard"):
+async def streaming_yeild_generater(graph: Any, query: str, depth: str = "standard"):
     """ "Yields SSE-formatted tokens as LLM produces them."""
 
     try:
@@ -60,7 +60,7 @@ async def streaming_yeild_generater(query: str, depth: str = "standard"):
             ],
         }
         config: RunnableConfig = {"configurable": {"thread_id": 1}}
-        async for event in app.astream_events(state, version="v2", config=config):
+        async for event in graph.astream_events(state, version="v2", config=config):
             if event["event"] == "on_chat_model_stream":
                 token = event["data"]["chunk"].content
                 if token:
@@ -76,8 +76,12 @@ async def streaming_yeild_generater(query: str, depth: str = "standard"):
 
 
 @research_router.post("/research/stream")
-async def research_stream(request_input: ResearchRequest) -> StreamingResponse:
+async def research_stream(
+    request_input: ResearchRequest, r: Request
+) -> StreamingResponse:
     return StreamingResponse(
-        streaming_yeild_generater(request_input.query, request_input.depth),
+        streaming_yeild_generater(
+            r.app.state.graph, request_input.query, request_input.depth
+        ),
         media_type="text/event-stream",
     )

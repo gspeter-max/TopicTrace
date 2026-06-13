@@ -80,8 +80,6 @@ _SKIP_AUTH_PATHS = (
     "/api-keys",
     "/docs",
     "/openapi.json",
-    "/retrieve/query",
-    "/research",
 )
 
 
@@ -95,11 +93,7 @@ async def authenticate(
     print(f"{request.url.path} not in _SKIP_AUTH_PATHS : {request} {_SKIP_AUTH_PATHS} ")
 
     auth_header = request.headers.get("authorization")
-    if not auth_header:
-        return JSONResponse(
-            status_code=401, content={"detail": "Missing Authorization header"}
-        )
-
+    if not auth_header: return JSONResponse( status_code=401, content={"detail": "Missing Authorization header"})
     api_key = auth_header.removeprefix("Bearer ").strip()
     if not api_key:
         return JSONResponse(status_code=401, content={"detail": "Empty API key"})

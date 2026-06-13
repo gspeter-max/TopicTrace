@@ -45,7 +45,7 @@ def init_postgres_db():
                 """)  # type: ignore
                 cur.execute(
                     """CREATE TABLE IF NOT EXISTS memory(
-                        session_id INT,
+                        session_id TEXT,
                         memory_information TEXT
                 )"""
                 )

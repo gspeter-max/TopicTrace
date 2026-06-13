@@ -2,14 +2,10 @@ from typing import Any, cast
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.runnables.config import RunnableConfig
-from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-from langgraph.graph import END, START, StateGraph
-from langgraph.graph.state import CompiledStateGraph
+from langgraph.graph import END, START, StateGraph # type: ignore[import] 
+from langgraph.graph.state import CompiledStateGraph #type: ignore[import] 
 from langgraph.prebuilt import ToolNode
-from psycopg import AsyncConnection
-from psycopg.rows import DictRow, dict_row
 
-from topictrace import log, settings
 from topictrace.agents.state import ResearchState
 from topictrace.db.postgres.client import pool
 from topictrace.prompts import get_system_prompt, get_user_prompt
@@ -25,7 +21,7 @@ async def get_memory(session_id: str) -> str | None:
     with pool.connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """SELECT memory_information FROM memory WHERE session_id = %s""",
+                """SELECT memory_information FROM memory WHERE session_id = %s ORDER BY session_id DESC LIMIT 1""",
                 (session_id,),
             )
             row = cur.fetchone()
@@ -40,7 +36,6 @@ async def store_in_memory(session_id: str, response: AIMessage) -> str:
         ),
     ]
     compact_response = await llm.ainvoke(compact_message)
-    log.info(f"[MEMORY] COMPACT_RESPONSE : {compact_response}")
     with pool.connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -52,7 +47,6 @@ async def store_in_memory(session_id: str, response: AIMessage) -> str:
 
 async def agent_node(state: ResearchState) -> dict[str, Any]:
     memory = await get_memory(session_id="session_id_123")
-    log.info(f"[MEMORY] --> {memory}")
     messages = [
         SystemMessage(content=get_system_prompt("research")),
         HumanMessage(
@@ -62,24 +56,29 @@ async def agent_node(state: ResearchState) -> dict[str, Any]:
 
     config: RunnableConfig = {"configurable": {"thread_id": 1}}
     response = llm_with_tools.invoke(messages, config)
-    _ = await store_in_memory(session_id="sesion_id_123", response=response)
     return {
         "messages": [response]
     }  # because messages add to ResearchState.messages.append{.....}
 
 
-def should_continue(state: ResearchState) -> str:
-    last_message = state["messages"][-1]
-    if isinstance(last_message, AIMessage) and last_message.tool_calls:
-        return "TOOLS"
+async def should_continue(state: ResearchState) -> str:
+    try:
+        last_message = state["messages"][-1]
+        if isinstance(last_message, AIMessage) and last_message.tool_calls:
+            return "TOOLS"
+        else:
+            _ = await store_in_memory(
+                session_id="session_id_123", response=cast(AIMessage, last_message)
+            )
+            return END
 
-    return END
+    except Exception as e:
+        raise RuntimeError(f"[GRAPH] [SHOULD_CONTINUE] : {e}")
 
 
-async def build_graph() -> CompiledStateGraph[
+async def deepResearchGraph() -> CompiledStateGraph[
     ResearchState, None, ResearchState, ResearchState
 ]:
-
     graph = (
         StateGraph(ResearchState)
         .add_node("AGENT", agent_node)
@@ -89,15 +88,4 @@ async def build_graph() -> CompiledStateGraph[
         .add_edge("TOOLS", "AGENT")
     )
 
-    conn = cast(
-        AsyncConnection[DictRow],
-        await AsyncConnection.connect(
-            settings.DATABASE_CONFIG.POSTGRES.POSTGRES_URI,
-            autocommit=True,
-            row_factory=dict_row,  # pyright: ignore[reportArgumentType]
-        ),
-    )
-
-    checkpointer = AsyncPostgresSaver(conn)
-    await checkpointer.setup()
-    return graph.compile(checkpointer=checkpointer)  # pyright: ignore[reportUnknownMemberType]
+    return graph.compile()  # pyright: ignore[reportUnknownMemberType]

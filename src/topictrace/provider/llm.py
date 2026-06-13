@@ -3,7 +3,12 @@
 from typing import Literal
 
 import httpx
+from langchain_core.language_models import LanguageModelInput
+from langchain_core.messages import AIMessage
+from langchain_core.tools import BaseTool
 from langchain_openai import ChatOpenAI
+from langgraph.graph.state import Runnable
+from tenacity import retry, stop_after_attempt, wait_exponential_jitter
 
 from topictrace import settings
 
@@ -11,7 +16,14 @@ _common_headers = {
     "Accept-Encoding": "identity"
 }  # no gzip — gateway sends broken compressed responses
 
+retry_decorator = retry(
+    stop=stop_after_attempt(max_attempt_number=5),
+    wait=wait_exponential_jitter(initial=1, max=10),
+    reraise=True,
+)
 
+
+@retry_decorator
 def get_llm(provider: Literal["DEEPSEEK_AI", "MISTRAL_AI"] | None = None):
     resolved_provider = provider or settings.DEFAULT_LLM_PROVIDER
     http_client = httpx.Client(
@@ -38,6 +50,8 @@ def get_llm(provider: Literal["DEEPSEEK_AI", "MISTRAL_AI"] | None = None):
     )
 
 
-def get_llm_with_tools(tools: list):
+def get_llm_with_tools(
+    tools: list[BaseTool],
+) -> Runnable[LanguageModelInput, AIMessage]:
     llm = get_llm()
     return llm.bind_tools(tools)

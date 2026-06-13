@@ -8,17 +8,15 @@ the final state back to QueryResponse.
 All pipeline logic lives in documentRetrieve/graph/.
 """
 
+from fastapi import Request
+
 from topictrace import settings
 from topictrace.db.neo4j import Neo4jClient
-from topictrace.rag.documentRetrieve.graph.build_graph import build_rag_graph
 from topictrace.rag.documentRetrieve.graph.state import RAGState
 from topictrace.server.schemas.rag.retrieveModels import QueryRequest, QueryResponse
 
-# Build the graph once at module load — it is stateless and reusable
-_rag_graph = build_rag_graph()
 
-
-async def handle_query(request: QueryRequest) -> QueryResponse:
+async def handle_query(userInput: QueryRequest, r: Request) -> QueryResponse:
     """
     Entry point for the Hybrid Adaptive RAG pipeline.
 
@@ -31,11 +29,11 @@ async def handle_query(request: QueryRequest) -> QueryResponse:
         settings.DATABASE_CONFIG.NEO4J.NEO4J_PASSWORD,
     )
     try:
-        final_state = await _rag_graph.ainvoke(
+        final_state = await r.app.state.ragGraph.ainvoke(
             RAGState(
-                query=request.query,
-                top_k=request.top_k,
-                top_k_rerank=request.top_k_rerank,
+                query=userInput.query,
+                top_k=userInput.top_k,
+                top_k_rerank=userInput.top_k_rerank,
                 intent="",
                 raw_chunks=list(),
                 vector_texts=list(),

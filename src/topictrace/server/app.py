@@ -3,7 +3,6 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from topictrace import log, settings
-from topictrace.agents.graph import build_graph
 from topictrace.db.neo4j import Neo4jClient
 from topictrace.db.neo4j.cypherQuerys import create_vector_index
 from topictrace.db.postgres.client import init_postgres_db
@@ -16,6 +15,13 @@ from topictrace.server.routes.rag.retrieveAPI import retrieveRouter
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialize databases on startup, clean up on shutdown."""
+
+    from topictrace.agents.graph import deepResearchGraph
+    from topictrace.rag.documentRetrieve.graph.graph import ragGraph
+
+    app.state.deepResearchGraph = await deepResearchGraph()
+    app.state.ragGraph = await ragGraph() 
+
     neo4j_client: Neo4jClient | None = None
     try:
         init_postgres_db()
@@ -30,7 +36,6 @@ async def lifespan(app: FastAPI):
             neo4j_client, settings.NEO4J_INDEX_NAME, settings.EMBEDDING_DIM
         )
         log.info("[DATABASE][NEO4J] database is created")
-        app.state.graph = await build_graph()
 
     except Exception as e:
         log.warning("[DATABASE] database fail to initilize", error=str(e))

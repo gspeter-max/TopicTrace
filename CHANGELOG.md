@@ -4,6 +4,22 @@ All notable changes to **TopicTrace** are documented in this file.
 
 ---
 
+## [0.2.2] — 2026-06-14
+
+### 🎯 Summary
+Graph lifecycle refactor, conversation memory, LLM retry, auth hardening.
+
+### ✅ Changes
+- **Graph Compilation**: Moved `deepResearchGraph` and `ragGraph` to `app.state` (lazy init at startup). Deleted `build_graph.py`, replaced with `graph/graph.py`.
+- **Memory**: Added `memory` table (Postgres) + `get_memory()` / `store_in_memory()` for conversation context across sessions. LLM compacts responses before storing.
+- **LLM Retry**: Added `tenacity` retry (5 attempts, exponential jitter) on `get_llm()`.
+- **Auth**: Removed `/retrieve/query` and `/research` from auth skip list. Collapsed single-line auth guard.
+- **Routes**: All endpoints now receive `Request` to access `app.state` graphs. `retrieve.py` accepts `Request` param.
+- **Deps**: Added `tenacity>=9.1.4`, `langgraph-checkpoint-postgres>=3.1.0`, `anyio>=4.13.0`.
+- **Edges**: Removed unused `END` import from `edges.py`.
+
+---
+
 ## [0.2.1] — 2026-06-11
 
 ### 🎯 Summary

@@ -2525,6 +2525,7 @@ dependencies = [
     { name = "rich" },
     { name = "structlog" },
     { name = "tavily-python" },
+    { name = "tenacity" },
     { name = "transformers" },
     { name = "uvicorn" },
 ]
@@ -2561,6 +2562,7 @@ requires-dist = [
     { name = "rich", specifier = ">=13.0.0" },
     { name = "structlog", specifier = ">=23.3.0" },
     { name = "tavily-python", specifier = ">=0.5.0" },
+    { name = "tenacity", specifier = ">=9.1.4" },
     { name = "transformers", specifier = ">=4.40.0" },
     { name = "uvicorn", specifier = ">=0.48.0" },
 ]
