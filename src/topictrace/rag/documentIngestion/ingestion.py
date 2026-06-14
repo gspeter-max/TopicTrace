@@ -1,6 +1,7 @@
-import asyncio
 from collections import defaultdict
 from typing import Any, Literal
+
+import anyio
 
 from topictrace import log, settings
 from topictrace.db.neo4j import Neo4jClient
@@ -69,13 +70,20 @@ async def extract_chunk_graph_data_in_parallel(
         One ``ChunkGraphExtractionResult`` per chunk with raw ``.entities`` and ``.relationships``.
     """
     client = get_llm(llm_provider)
-    return await asyncio.gather(
-        *[
-            extract_graph_data_from_chunk(llm_client=client, chunk=chunk)
-            for chunk in chunks
-        ]
-    )
+    send_stream, receive_stream = anyio.create_memory_object_stream()
 
+    async def process_one_task(chunk : dict[str, Any]):
+        result = await extract_graph_data_from_chunk(llm_client=client, chunk=chunk)
+        await send_stream.send(result)
+
+    async with anyio.create_task_group() as tg:
+        for chunk in chunks:
+            tg.start_soon(process_one_task, chunk)
+
+    await send_stream.aclose()
+
+    results = [chunk async for chunk in receive_stream]
+    return results
 
 async def resolve_entities_for_graph(
     raw_chunk_graph_results: list[ChunkGraphExtractionResult],
@@ -213,19 +221,19 @@ async def persist_document_graph(
         chunks = doc["chunks"]
         chunk_to_ids_map = graph_write_payload.get("chunk_to_entity_ids", {})
 
-        # Save all chunks at once, each with its own list of name codes
-        await asyncio.gather(
-            *[
-                save_chunk(
-                    neo4j_client,
-                    chunk,
-                    embedding,
-                    entity_ids=chunk_to_ids_map.get(chunk["chunk_id"], []),
-                )
-                for chunk, embedding in zip(chunks, embeddings)
-            ]
-        )
-
+        try:
+            async with anyio.create_task_group() as tg:
+                for chunk, embedding in zip(chunks, embeddings):
+                    tg.start_soon(
+                        save_chunk, 
+						neo4j_client,
+						chunk,
+						embedding,
+						chunk_to_ids_map.get(chunk["chunk_id"],[])
+                    )
+        except (Exception, anyio.get_cancelled_exc_class()) as e:
+             raise e   
+            
         # Save the graph nodes and connections
         await save_entity_nodes_and_relationships(neo4j_client, graph_write_payload)
 

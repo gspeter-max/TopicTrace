@@ -17,6 +17,7 @@ Graph lifecycle refactor, conversation memory, LLM retry, auth hardening.
 - **Routes**: All endpoints now receive `Request` to access `app.state` graphs. `retrieve.py` accepts `Request` param.
 - **Deps**: Added `tenacity>=9.1.4`, `langgraph-checkpoint-postgres>=3.1.0`, `anyio>=4.13.0`.
 - **Edges**: Removed unused `END` import from `edges.py`.
+- **Tests**: Aligned RAG retrieve, deep retrieve, and integration tests with v0.2.2 architecture. Resolved all Pyright strict type check errors in test files.
 
 ---
 

@@ -2,8 +2,8 @@ from typing import Any, cast
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.runnables.config import RunnableConfig
-from langgraph.graph import END, START, StateGraph # type: ignore[import] 
-from langgraph.graph.state import CompiledStateGraph #type: ignore[import] 
+from langgraph.graph import END, START, StateGraph  # type: ignore[import] 
+from langgraph.graph.state import CompiledStateGraph  #type: ignore[import] 
 from langgraph.prebuilt import ToolNode
 
 from topictrace.agents.state import ResearchState

@@ -1,9 +1,10 @@
 import json
 from typing import Any
+
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from langchain_core.messages import HumanMessage
-from langgraph.graph.state import RunnableConfig # type: ignore[import] 
+from langgraph.graph.state import RunnableConfig  # type: ignore[import] 
 
 from topictrace import log
 from topictrace.agents.state import ResearchState

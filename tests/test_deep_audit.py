@@ -1,3 +1,8 @@
+# pyright: reportMissingParameterType=false
+# pyright: reportUnknownParameterType=false
+# pyright: reportUnknownVariableType=false
+# pyright: reportUnknownArgumentType=false
+
 """
 Deep audit tests for TopicTrace.
 
@@ -602,18 +607,21 @@ class TestAuthMiddleware:
     @patch("topictrace.server.middleware.pool")
     @patch("topictrace.db.postgres.client.pool")
     @patch(
-        "topictrace.server.routes.deep_research.research.app.ainvoke",
+        "topictrace.agents.graph.deepResearchGraph",
         new_callable=AsyncMock,
     )
     def test_valid_key_allows_request(
-        self, mock_ainvoke, mock_db_pool, mock_middleware_pool
+        self, mock_deep_research_graph, mock_db_pool, mock_middleware_pool
     ):
         """Request with valid key should pass auth (may fail at agent level)."""
         from fastapi.testclient import TestClient
 
         from topictrace.server.app import app
 
-        mock_ainvoke.return_value = {"messages": [MagicMock(content="mocked_answer")]}
+        mock_graph = mock_deep_research_graph.return_value
+        mock_graph.ainvoke = AsyncMock(
+            return_value={"messages": [MagicMock(content="mocked_answer")]}
+        )
 
         key_part = "testkey123"
         mock_cursor = MagicMock()

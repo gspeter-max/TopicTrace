@@ -46,15 +46,13 @@ def _extract_entity_ids(chunks: list[dict[str, Any]]) -> list[str]:
 
 
 # ── Node 1: route_query ───────────────────────────────────────────────────────
-
-
-async def route_query(state: RAGState) -> dict[str, str]:
+async def route_query(state: RAGState | str) -> dict[str, str]:
     """Classify the query as 'simple' or 'complex' using the LLM router."""
+    query = state.query if isinstance(state, RAGState) else state
 
-    intent = await classify_intent(state.query)
-    log.info("Query intent classified", intent=intent, query=state.query)
+    intent = await classify_intent(query)
+    log.info("Query intent classified", intent=intent, query=query)
     return {"intent": intent}
-
 
 # ── Node 2: vector_search ─────────────────────────────────────────────────────
 
@@ -82,7 +80,6 @@ async def vector_search(state: RAGState) -> dict[str, Any]:
     log.info("Vector search complete", num_chunks=len(vector_texts))
 
     return {"raw_chunks": raw_chunks, "vector_texts": vector_texts}
-
 
 # ── Node 3: grade_chunks ──────────────────────────────────────────────────────
 

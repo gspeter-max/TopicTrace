@@ -10,6 +10,7 @@ These tests verify beyond simple ranking:
 - The provider correctly maps Voyage's 'index' field back to original documents
 """
 
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -19,11 +20,11 @@ from topictrace.provider.rerank import rerank_documents
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 
-def _make_voyage_response(scores: list[float]) -> dict:
+def _make_voyage_response(scores: list[float]) -> dict[str, Any]:
     return {"data": [{"index": i, "relevance_score": s} for i, s in enumerate(scores)]}
 
 
-def _make_mock_http_response(body: dict) -> MagicMock:
+def _make_mock_http_response(body: dict[str, Any]) -> MagicMock:
     resp = MagicMock()
     resp.json.return_value = body
     resp.raise_for_status = MagicMock()

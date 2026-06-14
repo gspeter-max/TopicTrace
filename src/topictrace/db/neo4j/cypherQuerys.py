@@ -51,12 +51,29 @@ async def save_chunk(
     names found in this piece of text.
     """
     query = """
-    MERGE (c:Chunk {chunk_id: $chunk_id})
-    SET c.text        = $text,
+    MERGE (c:Chunk {chunk_id: $chunk_id})  
+    ON CREATE SET 
+        c.text        = $text,
         c.context     = $context,
         c.document_id = $document_id,
         c.embedding   = $embedding,
-        c.entity_ids  = $entity_ids  // We added this line to save the codes!
+        c.entity_ids  = $entity_ids],  // We added this line to save the codes!
+        c.created_at = timestamp(),
+        c.version = 0 
+    
+    ON MATCH SET 
+        c.updated_at = timestamp(),
+        c.version = c.version + 1,
+
+        c.entity_ids = CASE 
+            WHEN $entity_ids IS NOT NULL THEN  apoc.coll.union(c.entity_ids, [$entity_ids])
+            ELSE c.entity_ids
+        END,
+        c.embedding = CASE 
+            WHEN $embedding  IS NOT NULL THEN $embedding
+            ELSE c.embedding
+        END
+
     """
     await client.execute_query(
         query,
@@ -70,33 +87,73 @@ async def save_chunk(
         },
     )
 
-
 ENTITY_WRITE_QUERY = """
-UNWIND $entities AS entity_row
-MERGE (e:Entity {canonical_name: entity_row.canonical_name})
-SET e.entity_type = entity_row.entity_type,
-    e.entity_id = entity_row.entity_id
+    UNWIND $entities AS entity_row
+    MERGE (e:Entity {canonical_name: entity_row.canonical_name, entity_type: entity_row.entity_type})
+    ON CREATE SET
+        e.entity_id = entity_row.entity_id,
+        e.chunk_ids = [entity_row.chunk_id],
+        e.created_at = timestamp(),
+        e.version = 0
+    ON MATCH SET
+        e.updated_at = timestamp(),
+        e.version = e.version + 1,
+        e.entity_id = CASE 
+            WHEN e.entity_id <> entity_row.entity_id THEN entity_row.entity_id 
+            ELSE e.entity_id 
+        END,
+        e.chunk_ids = CASE 
+            WHEN e.chunk_ids <> [entity_row.chunk_id] 
+            THEN apoc.coll.union(e.chunk_ids, [entity_row.chunk_id])
+            ELSE e.chunk_ids
+        END
 """
 
 MENTION_WRITE_QUERY = """
-UNWIND $mentions AS mention_row
-MATCH (e:Entity {canonical_name: mention_row.canonical_name})
-MATCH (c:Chunk {chunk_id: mention_row.chunk_id})
-MERGE (e)-[m:MENTIONED_IN]->(c)
-SET m.document_id = mention_row.document_id,
-    m.evidence_text = mention_row.evidence_text
+    UNWIND $mentions AS mention_row
+    MATCH (e:Entity {canonical_name: mention_row.canonical_name})
+    MATCH (c:Chunk {chunk_id: mention_row.chunk_id})
+    MERGE (e)-[m:MENTIONED_IN]->(c)
+    ON CREATE SET 
+        m.document_id = mention_row.document_id,
+        m.evidence_text = mention_row.evidence_text,
+        m.created_at = timestamp(),
+        m.version = 0
+    ON MATCH SET
+        m.document_id = CASE 
+            WHEN m.document_id <> mention_row.document_id THEN mention_row.document_id 
+            ELSE m.document_id
+        END, 
+        m.evidence_text = CASE 
+            WHEN m.evidence_text <> mention_row.evidence_text THEN mention_row.evidence_text 
+            ELSE m.evidence_text
+        END,
+        m.updated_at = timestamp(),
+        m.version = m.version + 1  
+       
 """
 
 RELATIONSHIP_WRITE_QUERY = """
-UNWIND $relationships AS relationship_row
-MATCH (source:Entity {canonical_name: relationship_row.source_entity_name})
-MATCH (target:Entity {canonical_name: relationship_row.target_entity_name})
-MERGE (source)-[relationship:RELATES_TO {
-    relationship_type: relationship_row.relationship_type,
-    document_id: $document_id,
-    chunk_id: relationship_row.chunk_id
-}]->(target)
-SET relationship.evidence_text = relationship_row.evidence_text
+    UNWIND $relationships AS relationship_row
+    MATCH (source:Entity {canonical_name: relationship_row.source_entity_name})
+    MATCH (target:Entity {canonical_name: relationship_row.target_entity_name})
+    MERGE (source)-[relationship:RELATES_TO {
+        relationship_type: relationship_row.relationship_type,
+        document_id: $document_id,
+        chunk_id: relationship_row.chunk_id
+    }]->(target)
+    ON CREATE SET 
+        relationship.document_id = relationship_row.document_id,
+        relationship.evidence_text = relationship.evidence_text,
+        relationship.created_at = timestamp(),
+        relationship.version = 0 
+    ON MATCH SET
+        relationship.evidence_text = CASE 
+            WHEN relationship.evidence_text <> relationship_row.evidence_text THEN relationship_row.evidence_text 
+            ELSE relationship.evidence_text
+        END,
+        m.updated_at = timestamp(),
+        m.version = m.version + 1
 """
 
 

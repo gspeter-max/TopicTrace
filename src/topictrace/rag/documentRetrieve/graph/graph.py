@@ -15,7 +15,7 @@ Graph topology:
                                                                       END
 """
 
-from langgraph.graph import END, START, StateGraph # type: ignore[import] 
+from langgraph.graph import END, START, StateGraph  # type: ignore[import] 
 
 from topictrace.rag.documentRetrieve.graph.edges import (
     route_after_grader,

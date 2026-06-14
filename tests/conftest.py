@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 # Set fake DATABASE_URL so pool doesn't try to reach real postgres
 os.environ["DATABASE_URL"] = "postgresql://fake:fake@localhost:5432/fake"
 
-from unittest.mock import MagicMock, Mock
+from unittest.mock import Mock
 
 
 class MockConnectionPoolMeta(type(MagicMock)):

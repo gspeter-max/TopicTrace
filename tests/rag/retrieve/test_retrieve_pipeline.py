@@ -1,14 +1,15 @@
 """
-Tests for the retrieve pipeline (LangGraph version).
+Tests for the retrieve pipeline entry point (handle_query).
 
-Strategy: mock `build_rag_graph` at the retrieve module level to return
-a pre-configured mock graph. This tests that handle_query correctly:
-  - Passes the right initial state to the graph
-  - Passes Neo4jClient via config
-  - Maps final_state back to QueryResponse
-  - Closes the Neo4j client in finally
+Strategy:
+  - handle_query(userInput, r) now takes a FastAPI Request as second arg.
+  - The RAG graph lives on r.app.state.ragGraph (set at startup via lifespan).
+  - Tests mock that attribute via a fake Request object — no need to patch
+    a module-level symbol that no longer exists.
+  - final_state returned by ainvoke is a LangGraph output object whose fields
+    are accessed via .value.<field> (not dict keys).
 
-Deeper per-node logic is tested in test_rag_graph.py.
+Deeper per-node logic is covered in test_rag_graph.py.
 """
 
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -20,47 +21,86 @@ from fastapi.testclient import TestClient
 from topictrace.server.routes.rag.retrieveAPI import retrieveRouter
 from topictrace.server.schemas.rag.retrieveModels import QueryRequest, QueryResponse
 
-# Setup a dummy app to test the router
+# ── App fixture for API-level tests ───────────────────────────────────────────
+
 app = FastAPI()
 app.include_router(retrieveRouter)
 http_client = TestClient(app)
 
 
-def _make_mock_graph(final_state: dict) -> MagicMock:
-    """Return a mock compiled graph whose ainvoke() returns final_state."""
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+
+def _make_final_state(
+    intent: str = "simple",
+    answer: str = "Answer",
+    used_graph_search: bool = False,
+    reason_for_graph_search: str = "",
+    final_context: list[str] | None = None,
+) -> MagicMock:
+    """
+    Build a mock LangGraph final-state result.
+
+    handle_query reads fields via final_state.value.<field> because LangGraph
+    wraps the returned state in a result object with a .value attribute.
+    """
+    value = MagicMock()
+    value.intent = intent
+    value.answer = answer
+    value.used_graph_search = used_graph_search
+    value.reason_for_graph_search = reason_for_graph_search
+    value.final_context = final_context if final_context is not None else []
+
+    result = MagicMock()
+    result.value = value
+    return result
+
+
+def _make_mock_request(graph: MagicMock) -> MagicMock:
+    """
+    Build a mock FastAPI Request that exposes the graph on app.state.ragGraph.
+
+    handle_query accesses r.app.state.ragGraph to get the compiled LangGraph.
+    """
+    mock_request = MagicMock()
+    mock_request.app.state.ragGraph = graph
+    return mock_request
+
+
+def _make_mock_graph(final_state: MagicMock) -> MagicMock:
+    """Return a mock compiled graph whose ainvoke() returns the given final_state."""
     mock_graph = MagicMock()
     mock_graph.ainvoke = AsyncMock(return_value=final_state)
     return mock_graph
 
 
-# ── handle_query → graph integration ──────────────────────────────────────────
+# ── handle_query integration ───────────────────────────────────────────────────
 
 
 @pytest.mark.anyio
-async def test_complex_path_handle_query_returns_correct_response():
+async def test_complex_path_handle_query_returns_correct_response() -> None:
     """
-    handle_query must map final LangGraph state to QueryResponse correctly.
-    Complex path: used_graph_search=True, no reason.
+    handle_query must map final LangGraph state fields to QueryResponse correctly.
+    Complex path: used_graph_search=True.
     """
-    final_state = {
-        "query": "complex query",
-        "intent": "complex",
-        "answer": "Final Answer",
-        "used_graph_search": True,
-        "reason_for_graph_search": "",
-        "final_context": ["chunk1", "graph facts"],
-    }
-    mock_graph = _make_mock_graph(final_state)
+    from topictrace.rag.documentRetrieve.retrieve import handle_query
 
-    with (
-        patch("topictrace.rag.documentRetrieve.retrieve._rag_graph", mock_graph),
-        patch("topictrace.rag.documentRetrieve.retrieve.Neo4jClient") as mock_neo4j,
-    ):
+    final_state = _make_final_state(
+        intent="complex",
+        answer="Final Answer",
+        used_graph_search=True,
+        reason_for_graph_search="",
+        final_context=["chunk1", "graph facts"],
+    )
+    mock_graph = _make_mock_graph(final_state)
+    mock_request = _make_mock_request(mock_graph)
+
+    with patch("topictrace.rag.documentRetrieve.retrieve.Neo4jClient") as mock_neo4j:
         mock_neo4j.return_value.close = AsyncMock()
-        req = QueryRequest(query="complex query", top_k=5, top_k_rerank=3)
-        res = await __import__(
-            "topictrace.rag.documentRetrieve.retrieve", fromlist=["handle_query"]
-        ).handle_query(req)
+        res = await handle_query(
+            QueryRequest(query="complex query", top_k=5, top_k_rerank=3),
+            mock_request,
+        )
 
     assert res.intent == "complex"
     assert res.used_graph_search is True
@@ -69,27 +109,26 @@ async def test_complex_path_handle_query_returns_correct_response():
 
 
 @pytest.mark.anyio
-async def test_simple_sufficient_path_returns_correct_response():
-    """Simple path with grader success: used_graph_search=False."""
-    final_state = {
-        "query": "simple query",
-        "intent": "simple",
-        "answer": "Grader Answer",
-        "used_graph_search": False,
-        "reason_for_graph_search": "",
-        "final_context": ["chunk1"],
-    }
+async def test_simple_sufficient_path_returns_correct_response() -> None:
+    """Simple path where grader is sufficient: used_graph_search=False."""
+    from topictrace.rag.documentRetrieve.retrieve import handle_query
+
+    final_state = _make_final_state(
+        intent="simple",
+        answer="Grader Answer",
+        used_graph_search=False,
+        reason_for_graph_search="",
+        final_context=["chunk1"],
+    )
     mock_graph = _make_mock_graph(final_state)
+    mock_request = _make_mock_request(mock_graph)
 
-    with (
-        patch("topictrace.rag.documentRetrieve.retrieve._rag_graph", mock_graph),
-        patch("topictrace.rag.documentRetrieve.retrieve.Neo4jClient") as mock_neo4j,
-    ):
+    with patch("topictrace.rag.documentRetrieve.retrieve.Neo4jClient") as mock_neo4j:
         mock_neo4j.return_value.close = AsyncMock()
-        req = QueryRequest(query="simple query", top_k=5, top_k_rerank=3)
-        from topictrace.rag.documentRetrieve.retrieve import handle_query
-
-        res = await handle_query(req)
+        res = await handle_query(
+            QueryRequest(query="simple query", top_k=5, top_k_rerank=3),
+            mock_request,
+        )
 
     assert res.intent == "simple"
     assert res.used_graph_search is False
@@ -97,27 +136,26 @@ async def test_simple_sufficient_path_returns_correct_response():
 
 
 @pytest.mark.anyio
-async def test_simple_escalation_path_returns_reason():
-    """Simple path with grader failure: reason_for_graph_search is set."""
-    final_state = {
-        "query": "simple query",
-        "intent": "simple",
-        "answer": "Escalated Answer",
-        "used_graph_search": True,
-        "reason_for_graph_search": "missing details",
-        "final_context": ["chunk1", "graph facts"],
-    }
+async def test_simple_escalation_path_returns_reason() -> None:
+    """Simple path where grader escalates: reason_for_graph_search is set."""
+    from topictrace.rag.documentRetrieve.retrieve import handle_query
+
+    final_state = _make_final_state(
+        intent="simple",
+        answer="Escalated Answer",
+        used_graph_search=True,
+        reason_for_graph_search="missing details",
+        final_context=["chunk1", "graph facts"],
+    )
     mock_graph = _make_mock_graph(final_state)
+    mock_request = _make_mock_request(mock_graph)
 
-    with (
-        patch("topictrace.rag.documentRetrieve.retrieve._rag_graph", mock_graph),
-        patch("topictrace.rag.documentRetrieve.retrieve.Neo4jClient") as mock_neo4j,
-    ):
+    with patch("topictrace.rag.documentRetrieve.retrieve.Neo4jClient") as mock_neo4j:
         mock_neo4j.return_value.close = AsyncMock()
-        req = QueryRequest(query="simple query", top_k=5, top_k_rerank=3)
-        from topictrace.rag.documentRetrieve.retrieve import handle_query
-
-        res = await handle_query(req)
+        res = await handle_query(
+            QueryRequest(query="simple query", top_k=5, top_k_rerank=3),
+            mock_request,
+        )
 
     assert res.intent == "simple"
     assert res.used_graph_search is True
@@ -126,61 +164,56 @@ async def test_simple_escalation_path_returns_reason():
 
 
 @pytest.mark.anyio
-async def test_neo4j_client_is_closed_even_if_graph_fails():
-    """Neo4j client must be closed in finally even when the graph raises."""
-    mock_graph = MagicMock()
-    mock_graph.ainvoke = AsyncMock(side_effect=RuntimeError("graph exploded"))
+async def test_neo4j_client_is_closed_even_if_graph_raises() -> None:
+    """Neo4j client must be closed in the finally block even when the graph raises."""
+    from topictrace.rag.documentRetrieve.retrieve import handle_query
 
-    with (
-        patch("topictrace.rag.documentRetrieve.retrieve._rag_graph", mock_graph),
-        patch("topictrace.rag.documentRetrieve.retrieve.Neo4jClient") as mock_neo4j,
-    ):
+    exploding_graph = MagicMock()
+    exploding_graph.ainvoke = AsyncMock(side_effect=RuntimeError("graph exploded"))
+    mock_request = _make_mock_request(exploding_graph)
+
+    with patch("topictrace.rag.documentRetrieve.retrieve.Neo4jClient") as mock_neo4j:
         mock_client = MagicMock()
         mock_client.close = AsyncMock()
         mock_neo4j.return_value = mock_client
 
-        from topictrace.rag.documentRetrieve.retrieve import handle_query
-
         with pytest.raises(RuntimeError, match="graph exploded"):
-            await handle_query(QueryRequest(query="q", top_k=5, top_k_rerank=3))
+            await handle_query(
+                QueryRequest(query="q", top_k=5, top_k_rerank=3),
+                mock_request,
+            )
 
     mock_client.close.assert_awaited_once()
 
 
 @pytest.mark.anyio
-async def test_neo4j_client_passed_via_config():
-    """The Neo4j client must be passed as config['configurable']['neo4j_client']."""
-    final_state = {
-        "intent": "simple",
-        "answer": "ok",
-        "used_graph_search": False,
-        "reason_for_graph_search": "",
-        "final_context": [],
-    }
-    mock_graph = _make_mock_graph(final_state)
+async def test_neo4j_client_passed_via_config_to_ainvoke() -> None:
+    """handle_query must pass the Neo4j client inside config['configurable']['neo4j_client']."""
+    from topictrace.rag.documentRetrieve.retrieve import handle_query
 
-    with (
-        patch("topictrace.rag.documentRetrieve.retrieve._rag_graph", mock_graph),
-        patch("topictrace.rag.documentRetrieve.retrieve.Neo4jClient") as mock_neo4j,
-    ):
+    final_state = _make_final_state()
+    mock_graph = _make_mock_graph(final_state)
+    mock_request = _make_mock_request(mock_graph)
+
+    with patch("topictrace.rag.documentRetrieve.retrieve.Neo4jClient") as mock_neo4j:
         mock_client = MagicMock()
         mock_client.close = AsyncMock()
         mock_neo4j.return_value = mock_client
 
-        from topictrace.rag.documentRetrieve.retrieve import handle_query
+        await handle_query(
+            QueryRequest(query="q", top_k=5, top_k_rerank=3),
+            mock_request,
+        )
 
-        await handle_query(QueryRequest(query="q", top_k=5, top_k_rerank=3))
-
-    call_kwargs = mock_graph.ainvoke.call_args
-    config_arg = call_kwargs[1]["config"]
-    assert config_arg["configurable"]["neo4j_client"] is mock_client
+    call_kwargs = mock_graph.ainvoke.call_args[1]
+    assert call_kwargs["config"]["configurable"]["neo4j_client"] is mock_client
 
 
 # ── API endpoint ───────────────────────────────────────────────────────────────
 
 
-def test_api_route_delegates_to_handle_query():
-    """The /retrieve/query endpoint must delegate to handle_query."""
+def test_api_route_delegates_to_handle_query() -> None:
+    """The /retrieve/query endpoint must call handle_query and return its result."""
     with patch("topictrace.server.routes.rag.retrieveAPI.handle_query") as mock_handle:
         mock_handle.return_value = QueryResponse(
             answer="test answer",

@@ -9,6 +9,7 @@ from typing import Literal
 
 from topictrace.rag.documentRetrieve.graph.state import RAGState
 
+
 def route_after_vector_search(
     state: RAGState,
 ) -> Literal["grade_chunks", "graph_search"]:
