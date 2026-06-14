@@ -26,3 +26,35 @@ class MockConnectionPool(MagicMock, metaclass=MockConnectionPoolMeta):
 # This prevents the real pool from trying to connect at import time
 _pool_patch = patch("psycopg_pool.ConnectionPool", new=MockConnectionPool)
 _pool_patch.start()
+
+
+from typing import Any
+from topictrace.rag.documentRetrieve.graph.state import RAGState
+
+
+def make_state(**overrides: Any) -> RAGState:
+    """
+    Build a RAGState with sensible defaults, overriding only what the test cares about.
+
+    RAGState is a Pydantic BaseModel — every field is required unless given a
+    default, so we supply a full set of zero-value defaults here and let callers
+    override only the fields relevant to the behaviour under test.
+    """
+    defaults: dict[str, Any] = {
+        "query": "",
+        "top_k": 3,
+        "top_k_rerank": 3,
+        "intent": "",
+        "raw_chunks": [],
+        "vector_texts": [],
+        "grade_sufficient": False,
+        "grade_reason": "",
+        "grade_answer": "",
+        "graph_facts": "",
+        "used_graph_search": False,
+        "reason_for_graph_search": "",
+        "final_context": [],
+        "answer": "",
+    }
+    defaults.update(overrides)
+    return RAGState(**defaults)

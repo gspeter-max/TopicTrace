@@ -19,11 +19,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from langchain_core.messages import AIMessage
 
-from topictrace.rag.documentRetrieve.graph.nodes import (  # pyright: ignore[reportPrivateUsage]
-    _extract_entity_ids,
+from tests.conftest import make_state as _make_state
+from topictrace.rag.documentRetrieve.graph.nodes import (
+    _extract_entity_ids,  # pyright: ignore[reportPrivateUsage]
     answer_node,
 )
-from topictrace.rag.documentRetrieve.graph.state import RAGState
 from topictrace.server.schemas.rag.retrieveModels import QueryRequest
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -31,28 +31,6 @@ from topictrace.server.schemas.rag.retrieveModels import QueryRequest
 
 def _make_llm_response(content: str) -> AIMessage:
     return AIMessage(content=content)
-
-
-def _make_state(**overrides: Any) -> RAGState:
-    """Build a RAGState with sensible defaults, overriding only what the test needs."""
-    defaults: dict[str, Any] = {
-        "query": "",
-        "top_k": 3,
-        "top_k_rerank": 3,
-        "intent": "",
-        "raw_chunks": [],
-        "vector_texts": [],
-        "grade_sufficient": False,
-        "grade_reason": "",
-        "grade_answer": "",
-        "graph_facts": "",
-        "used_graph_search": False,
-        "reason_for_graph_search": "",
-        "final_context": [],
-        "answer": "",
-    }
-    defaults.update(overrides)
-    return RAGState(**defaults)
 
 
 def _make_final_state(

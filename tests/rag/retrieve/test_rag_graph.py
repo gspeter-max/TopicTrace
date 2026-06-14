@@ -10,12 +10,12 @@ RAGState is a Pydantic BaseModel — nodes use attribute access (state.query),
 so tests must pass RAGState instances, not plain dicts.
 """
 
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from langchain_core.messages import AIMessage
 
+from tests.conftest import make_state as _make_state
 from topictrace.rag.documentRetrieve.graph.edges import (
     route_after_grader,
     route_after_vector_search,
@@ -28,37 +28,8 @@ from topictrace.rag.documentRetrieve.graph.nodes import (
     route_query,
     vector_search,
 )
-from topictrace.rag.documentRetrieve.graph.state import RAGState
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
-
-
-def _make_state(**overrides: Any) -> RAGState:
-    """
-    Build a RAGState with sensible defaults, overriding only what the test cares about.
-
-    RAGState is a Pydantic BaseModel — every field is required unless given a
-    default, so we supply a full set of zero-value defaults here and let callers
-    override only the fields relevant to the behaviour under test.
-    """
-    defaults: dict[str, Any] = {
-        "query": "",
-        "top_k": 3,
-        "top_k_rerank": 3,
-        "intent": "",
-        "raw_chunks": [],
-        "vector_texts": [],
-        "grade_sufficient": False,
-        "grade_reason": "",
-        "grade_answer": "",
-        "graph_facts": "",
-        "used_graph_search": False,
-        "reason_for_graph_search": "",
-        "final_context": [],
-        "answer": "",
-    }
-    defaults.update(overrides)
-    return RAGState(**defaults)
 
 
 def _mock_grader_result(
